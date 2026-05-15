@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2930134478/AI-CS/backend/repository"
-	"github.com/2930134478/AI-CS/backend/service/embedding"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/service/embedding"
 )
 
 // RetrievalService RAG 检索服务

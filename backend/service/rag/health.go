@@ -3,7 +3,7 @@ package rag
 import (
 	"context"
 
-	"github.com/2930134478/AI-CS/backend/service/embedding"
+	"github.com/yndxw/workbuddy-ai/backend/service/embedding"
 )
 
 // HealthChecker 健康检查器

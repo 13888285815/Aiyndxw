@@ -9,11 +9,18 @@ export function apiUrl(path: string): string {
   return `${API_BASE_URL}${API_PREFIX}${p}`;
 }
 
-/** 知识库/文档/导入等接口需带当前用户 ID，供后端校验「是否开放知识库」开关 */
+/** 知识库/文档/导入等接口需带当前用户 ID 与 Token 校验 */
 export function getAgentHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const id = window.localStorage.getItem("agent_user_id");
-  if (!id) return {};
-  return { "X-User-Id": id };
+  const token = window.localStorage.getItem("agent_ws_token");
+  const headers: Record<string, string> = {};
+  if (id) {
+    headers["X-User-Id"] = id;
+  }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
 }
 

@@ -3,7 +3,7 @@ package controller
 import (
 	"net/http"
 
-	"github.com/2930134478/AI-CS/backend/service"
+	"github.com/yndxw/workbuddy-ai/backend/service"
 	"github.com/gin-gonic/gin"
 )
 

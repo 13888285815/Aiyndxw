@@ -1,10 +1,10 @@
 #!/bin/bash
-# AI-CS 服务器部署脚本
+# WorkBuddy AI 服务器部署脚本
 # 使用方法：在服务器上运行此脚本进行快速部署
 
 set -e  # 遇到错误立即退出
 
-echo "🚀 开始部署 AI-CS 系统..."
+echo "🚀 开始部署 WorkBuddy AI 系统..."
 
 # 检查是否为 root 用户
 if [ "$EUID" -ne 0 ]; then 
@@ -82,25 +82,25 @@ echo ""
 echo "✅ 基础环境安装完成！"
 echo ""
 echo "📝 接下来的步骤："
-echo "1. 克隆项目到 /var/www/AI-CS"
-echo "   git clone https://github.com/your-username/AI-CS.git"
+echo "1. 克隆项目到 /var/www/WorkBuddy AI"
+echo "   git clone https://github.com/your-username/WorkBuddy AI.git"
 echo ""
 echo "2. 配置后端环境变量："
-echo "   cd /var/www/AI-CS/backend"
+echo "   cd /var/www/WorkBuddy AI/backend"
 echo "   cp .env.example .env"
 echo "   # 编辑 .env 文件，填入数据库配置"
 echo ""
 echo "3. 创建数据库："
 echo "   mysql -u root -p"
-echo "   CREATE DATABASE ai_cs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+echo "   CREATE DATABASE workbuddy_ai CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 echo ""
 echo "4. 编译后端："
-echo "   cd /var/www/AI-CS/backend"
+echo "   cd /var/www/WorkBuddy AI/backend"
 echo "   go mod tidy"
 echo "   go build -o backend main.go"
 echo ""
 echo "5. 配置前端环境变量："
-echo "   cd /var/www/AI-CS/frontend"
+echo "   cd /var/www/WorkBuddy AI/frontend"
 echo "   cp .env.example .env.production"
 echo "   # 编辑 .env.production，设置 API 地址"
 echo ""

@@ -29,7 +29,7 @@ export function Header() {
             <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-semibold text-sm">AI</span>
             </div>
-            <span className="text-[19px] font-semibold text-foreground tracking-tight">AI-CS</span>
+            <span className="text-[19px] font-semibold text-foreground tracking-tight">WorkBuddy AI</span>
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-4 md:gap-8">

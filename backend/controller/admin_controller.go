@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/2930134478/AI-CS/backend/service"
+	"github.com/yndxw/workbuddy-ai/backend/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,26 +24,27 @@ func NewAdminController(authService *service.AuthService, userService *service.U
 }
 
 // checkAdminPermission 检查当前用户是否是管理员。
-// 暂时从 query 参数获取 current_user_id，后续可以改为从 JWT token 获取。
+// 修复点：改用 getUserIDFromHeader，优先从 Token 校验结果中获取 userID，防止通过 query 伪造 identity。
 func (a *AdminController) checkAdminPermission(c *gin.Context) (uint, bool) {
-	userIDStr := c.Query("current_user_id")
-	if userIDStr == "" {
-		// 也可以从请求头获取
-		userIDStr = c.GetHeader("X-Current-User-ID")
-	}
-	if userIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未提供当前用户ID"})
-		return 0, false
+	userID := getUserIDFromHeader(c)
+
+	// 如果 getUserIDFromHeader 没拿到，再尝试 query（仅为了向下兼容，极度不推荐）
+	if userID == 0 {
+		userIDStr := c.Query("current_user_id")
+		if userIDStr != "" {
+			if id, err := strconv.ParseUint(userIDStr, 10, 64); err == nil {
+				userID = uint(id)
+			}
+		}
 	}
 
-	userID, err := strconv.ParseUint(userIDStr, 10, 64)
-	if err != nil || userID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户ID不合法"})
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未提供或无效的当前用户身份"})
 		return 0, false
 	}
 
 	// 检查用户是否是管理员
-	user, err := a.userService.GetUser(uint(userID))
+	user, err := a.userService.GetUser(userID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户不存在"})
 		return 0, false
@@ -54,7 +55,7 @@ func (a *AdminController) checkAdminPermission(c *gin.Context) (uint, bool) {
 		return 0, false
 	}
 
-	return uint(userID), true
+	return userID, true
 }
 
 type createAgentRequest struct {

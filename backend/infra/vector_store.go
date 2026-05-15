@@ -230,7 +230,7 @@ func (vs *VectorStore) createCollectionWithName(ctx context.Context, collectionN
 	// 定义集合 schema
 	schema := &entity.Schema{
 		CollectionName: collectionName,
-		Description:    "AI-CS 知识库文档向量存储",
+		Description:    "WorkBuddy AI 知识库文档向量存储",
 		Fields: []*entity.Field{
 			{
 				Name:       "id",

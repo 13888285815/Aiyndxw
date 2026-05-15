@@ -1,8 +1,8 @@
 package service
 
 import (
-	_ "github.com/2930134478/AI-CS/backend/models" // 用于访问 models.User 类型（通过 repository 返回）
-	"github.com/2930134478/AI-CS/backend/repository"
+	_ "github.com/yndxw/workbuddy-ai/backend/models" // 用于访问 models.User 类型（通过 repository 返回）
+	"github.com/yndxw/workbuddy-ai/backend/repository"
 )
 
 // OnlineAgentHub 描述获取在线客服ID列表的能力。

@@ -40,12 +40,21 @@ func GenerateWSToken(userID uint, ttl time.Duration) (token string, expireAt int
 
 // ValidateWSToken 校验客服 WebSocket 令牌是否与用户匹配且未过期。
 func ValidateWSToken(token string, expectedUserID uint) bool {
-	if expectedUserID == 0 || token == "" {
+	uid, err := ParseWSToken(token)
+	if err != nil || uid != expectedUserID {
 		return false
+	}
+	return true
+}
+
+// ParseWSToken 解析并校验令牌，返回其中的 UserID。
+func ParseWSToken(token string) (uint, error) {
+	if token == "" {
+		return 0, fmt.Errorf("empty token")
 	}
 	parts := strings.Split(token, ".")
 	if len(parts) != 2 {
-		return false
+		return 0, fmt.Errorf("invalid token format")
 	}
 	payloadEnc, signature := parts[0], parts[1]
 
@@ -53,25 +62,28 @@ func ValidateWSToken(token string, expectedUserID uint) bool {
 	_, _ = mac.Write([]byte(payloadEnc))
 	expectedSig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	if !hmac.Equal([]byte(signature), []byte(expectedSig)) {
-		return false
+		return 0, fmt.Errorf("invalid signature")
 	}
 
 	payloadRaw, err := base64.RawURLEncoding.DecodeString(payloadEnc)
 	if err != nil {
-		return false
+		return 0, fmt.Errorf("decode payload failed")
 	}
 	payloadParts := strings.Split(string(payloadRaw), ":")
 	if len(payloadParts) != 2 {
-		return false
+		return 0, fmt.Errorf("invalid payload format")
 	}
 	uid64, err := strconv.ParseUint(payloadParts[0], 10, 64)
-	if err != nil || uint(uid64) != expectedUserID {
-		return false
+	if err != nil {
+		return 0, fmt.Errorf("invalid user id")
 	}
 	expireAt, err := strconv.ParseInt(payloadParts[1], 10, 64)
 	if err != nil {
-		return false
+		return 0, fmt.Errorf("invalid expire time")
 	}
-	return time.Now().Unix() <= expireAt
+	if time.Now().Unix() > expireAt {
+		return 0, fmt.Errorf("token expired")
+	}
+	return uint(uid64), nil
 }
 

@@ -10,13 +10,13 @@ export function buildHomeJsonLd() {
     "@graph": [
       {
         "@type": "Organization",
-        name: "AI-CS",
+        name: "WorkBuddy AI",
         url,
         sameAs: [repo],
       },
       {
         "@type": "SoftwareApplication",
-        name: "AI-CS 智能客服系统",
+        name: "WorkBuddy AI 智能客服系统",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web · Docker 私有化部署",
         description:

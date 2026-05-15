@@ -77,7 +77,7 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            537yaha/ai-cs-backend:latest
+            yndxw/workbuddy-ai-backend:latest
           platforms: linux/amd64,linux/arm64
           # 使用 GitHub Actions 缓存构建层，显著减少重复构建时间
           cache-from: type=gha
@@ -109,7 +109,7 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: |
-            537yaha/ai-cs-frontend:latest
+            yndxw/workbuddy-ai-frontend:latest
           platforms: linux/amd64,linux/arm64
           # 前端统一走同域 /api（由反向代理转发到后端），无需在构建时注入 localhost/端口
           cache-from: type=gha

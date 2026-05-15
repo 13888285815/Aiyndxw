@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/2930134478/AI-CS/backend/infra"
-	"github.com/2930134478/AI-CS/backend/infra/search"
-	"github.com/2930134478/AI-CS/backend/models"
-	"github.com/2930134478/AI-CS/backend/repository"
-	"github.com/2930134478/AI-CS/backend/service/rag"
-	"github.com/2930134478/AI-CS/backend/utils"
+	"github.com/yndxw/workbuddy-ai/backend/infra"
+	"github.com/yndxw/workbuddy-ai/backend/infra/search"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/service/rag"
+	"github.com/yndxw/workbuddy-ai/backend/utils"
 	"gorm.io/gorm"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/2930134478/AI-CS/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/models"
 	"gorm.io/gorm"
 )
 

@@ -20,7 +20,7 @@ export function Footer() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <span className="text-lg font-bold text-primary-foreground">AI</span>
               </div>
-              <span className="text-lg font-bold">AI-CS</span>
+              <span className="text-lg font-bold">WorkBuddy AI</span>
             </div>
             <p className="mb-4 text-sm text-muted-foreground">{t("footer.blurb")}</p>
             <div className="flex items-center space-x-4">

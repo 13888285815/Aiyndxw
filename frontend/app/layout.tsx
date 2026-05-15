@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI-CS 智能客服系统",
+  title: "WorkBuddy AI 智能客服系统",
   description: "融合 AI 技术与人工客服，为企业提供高效、智能的客户服务解决方案",
 };
 
@@ -48,7 +48,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.AICS_BACKEND_PORT = '${BACKEND_PORT}';`,
+            __html: `window.WorkBuddyAI_BACKEND_PORT = '${BACKEND_PORT}';`,
           }}
         />
       </head>

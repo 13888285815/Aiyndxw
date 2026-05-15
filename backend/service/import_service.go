@@ -7,9 +7,9 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/2930134478/AI-CS/backend/models"
-	"github.com/2930134478/AI-CS/backend/repository"
-	import_service "github.com/2930134478/AI-CS/backend/service/import"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
+	import_service "github.com/yndxw/workbuddy-ai/backend/service/import"
 )
 
 // ImportService 导入服务

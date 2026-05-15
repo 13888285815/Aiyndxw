@@ -70,7 +70,7 @@ func NewRedisBusFromEnv() (DistributedBus, error) {
 
 	channel := os.Getenv("REDIS_WS_CHANNEL")
 	if channel == "" {
-		channel = "ai_cs:ws_events"
+		channel = "workbuddy_ai:ws_events"
 	}
 	nodeID := fmt.Sprintf("%s-%d", hostnameOrDefault(), time.Now().UnixNano())
 	return &RedisBus{

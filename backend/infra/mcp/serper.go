@@ -6,7 +6,7 @@ package mcp
 import (
 	"context"
 
-	"github.com/2930134478/AI-CS/backend/infra/search"
+	"github.com/yndxw/workbuddy-ai/backend/infra/search"
 )
 
 // SerperWebSearchProvider 通过 MCP 调用 Serper 的 google_search 工具，实现 search.WebSearchProvider。

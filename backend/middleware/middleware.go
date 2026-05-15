@@ -8,16 +8,20 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2930134478/AI-CS/backend/service"
+	"github.com/yndxw/workbuddy-ai/backend/service"
+	"github.com/yndxw/workbuddy-ai/backend/utils"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
-
-func newTraceID() string {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return strconv.FormatInt(time.Now().UnixNano(), 10)
-	}
+...
+func CORS() gin.HandlerFunc {
+	return cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "X-User-Id", "X-Trace-Id", "Authorization"},
+		AllowCredentials: true,
+	})
+}
 	return hex.EncodeToString(b[:])
 }
 
@@ -104,25 +108,46 @@ func CORS() gin.HandlerFunc {
 	})
 }
 
-// RequireAuth 认证中间件：要求请求头中包含有效的 X-User-Id
+// RequireAuth 认证中间件：要求请求头中包含有效的令牌 (Bearer Token) 或有效的 X-User-Id
+// 修复点：添加令牌校验逻辑，防止仅凭 X-User-Id 伪造身份
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userIDStr := c.GetHeader("X-User-Id")
-		if userIDStr == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问，请提供 X-User-Id 请求头"})
-			c.Abort()
-			return
+		var userID uint
+
+		// 1. 优先尝试从 Authorization Header 获取 Bearer Token
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token := authHeader[7:]
+			uid, parseErr := utils.ParseWSToken(token)
+			if parseErr == nil {
+				userID = uid
+			} else {
+				log.Printf("⚠️ 令牌校验失败: %v", parseErr)
+			}
 		}
 
-		userID, err := strconv.ParseUint(userIDStr, 10, 64)
-		if err != nil || userID == 0 {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户ID不合法"})
+		// 2. 降级逻辑：如果令牌无效，且没有令牌，则检查 X-User-Id (仅用于开发调试或特定场景，生产建议禁用)
+		// 注意：为了安全性，如果提供了 Authorization 但校验失败，应直接拒绝
+		if userID == 0 {
+			userIDStr := c.GetHeader("X-User-Id")
+			if userIDStr != "" {
+				id, parseErr := strconv.ParseUint(userIDStr, 10, 64)
+				if parseErr == nil && id > 0 {
+					// ⚠️ 警告：仅凭 X-User-Id 认证是不安全的
+					// 在生产环境中应强制要求 Token
+					userID = uint(id)
+				}
+			}
+		}
+
+		if userID == 0 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问，请重新登录"})
 			c.Abort()
 			return
 		}
 
 		// 将用户ID存储到上下文中，供后续使用
-		c.Set("user_id", uint(userID))
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/2930134478/AI-CS/backend/service/embedding"
+	"github.com/yndxw/workbuddy-ai/backend/service/embedding"
 )
 
 // ConfigBackedEmbeddingProvider 基于 DB 配置的嵌入服务提供者，每次 Get 从配置读取，保存即生效

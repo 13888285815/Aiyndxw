@@ -4,7 +4,7 @@ services:
   # MySQL 数据库
   mysql:
     image: mysql:8.0
-    container_name: ai-cs-mysql
+    container_name: workbuddy-ai-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -22,7 +22,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - ai-cs-network
+      - workbuddy-ai-network
     restart: unless-stopped
 
   # 后端服务（本地构建）
@@ -32,7 +32,7 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./.env
-    container_name: ai-cs-backend
+    container_name: workbuddy-ai-backend
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -63,7 +63,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - ai-cs-network
+      - workbuddy-ai-network
     restart: unless-stopped
 
   # 前端服务（本地构建）
@@ -76,13 +76,13 @@ services:
         NEXT_PUBLIC_BACKEND_HOST: ${NEXT_PUBLIC_BACKEND_HOST}
         NEXT_PUBLIC_BACKEND_PORT: ${NEXT_PUBLIC_BACKEND_PORT}
         NEXT_PUBLIC_MATOMO_CONTAINER_URL: ${NEXT_PUBLIC_MATOMO_CONTAINER_URL}
-    container_name: ai-cs-frontend
+    container_name: workbuddy-ai-frontend
     ports:
       - "${FRONTEND_PORT}:3000"
     depends_on:
       - backend
     networks:
-      - ai-cs-network
+      - workbuddy-ai-network
     restart: unless-stopped
 
 volumes:
@@ -90,5 +90,5 @@ volumes:
     driver: local
 
 networks:
-  ai-cs-network:
+  workbuddy-ai-network:
     driver: bridge

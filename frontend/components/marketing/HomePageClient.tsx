@@ -457,7 +457,7 @@ export function HomePageClient() {
               </Button>
               <Button size="lg" variant="outline" className="rounded-xl border-border/80 px-8 bg-background/80" asChild>
                 <a
-                  href={`mailto:2930134478@qq.com?subject=${encodeURIComponent(t("home.cta.mailSubject"))}&body=${encodeURIComponent(t("home.cta.mailBody"))}`}
+                  href={`mailto:zzx@yndxw.com?subject=${encodeURIComponent(t("home.cta.mailSubject"))}&body=${encodeURIComponent(t("home.cta.mailBody"))}`}
                   className="inline-flex items-center justify-center gap-2"
                 >
                   {t("home.cta.feedback")}

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/2930134478/AI-CS/backend/models"
-	"github.com/2930134478/AI-CS/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
 )
 
 // PromptConfigService 系统提示词配置服务（供「提示词」页与 AIService 使用）

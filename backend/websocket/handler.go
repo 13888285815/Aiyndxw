@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/2930134478/AI-CS/backend/repository"
-	"github.com/2930134478/AI-CS/backend/utils"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )

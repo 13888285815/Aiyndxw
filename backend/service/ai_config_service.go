@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/2930134478/AI-CS/backend/models"
-	"github.com/2930134478/AI-CS/backend/repository"
-	"github.com/2930134478/AI-CS/backend/utils"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/utils"
 )
 
 // AIConfigService AI 配置服务（负责管理 AI 配置）

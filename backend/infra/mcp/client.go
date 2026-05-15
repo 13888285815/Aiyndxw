@@ -30,7 +30,7 @@ func NewClient(serverURL string) *Client {
 	url := strings.TrimSpace(serverURL)
 	return &Client{
 		serverURL: url,
-		impl:      &mcp.Implementation{Name: "ai-cs-backend", Version: "v1.0.0"},
+		impl:      &mcp.Implementation{Name: "workbuddy-ai-backend", Version: "v1.0.0"},
 	}
 }
 

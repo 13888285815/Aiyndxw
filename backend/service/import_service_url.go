@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/2930134478/AI-CS/backend/models"
-	import_service "github.com/2930134478/AI-CS/backend/service/import"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	import_service "github.com/yndxw/workbuddy-ai/backend/service/import"
 )
 
 // ImportFromUrls 从 URL 导入文档

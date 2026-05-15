@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -9,51 +10,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/2930134478/AI-CS/backend/infra"
-	"github.com/2930134478/AI-CS/backend/service"
+	"github.com/yndxw/workbuddy-ai/backend/infra"
+	"github.com/yndxw/workbuddy-ai/backend/service"
+	"github.com/yndxw/workbuddy-ai/backend/utils"
 	"github.com/gin-gonic/gin"
 )
-
-// MessageController 负责处理消息相关的 HTTP 请求。
-type MessageController struct {
-	messageService      *service.MessageService
-	conversationService *service.ConversationService
-	userService         *service.UserService
-	storageService      infra.StorageService
-}
-
-// NewMessageController 创建 MessageController 实例。
-func NewMessageController(
-	messageService *service.MessageService,
-	conversationService *service.ConversationService,
-	userService *service.UserService,
-	storageService infra.StorageService,
-) *MessageController {
-	return &MessageController{
-		messageService:      messageService,
-		conversationService: conversationService,
-		userService:         userService,
-		storageService:      storageService,
-	}
-}
-
-type createMessageRequest struct {
-	ConversationID uint    `json:"conversation_id"`
-	Content        string  `json:"content"`
-	SenderIsAgent  bool    `json:"sender_is_agent"`
-	SenderID       uint    `json:"sender_id"`
-	FileURL        *string `json:"file_url"`
-	FileType       *string `json:"file_type"`
-	FileName       *string `json:"file_name"`
-	FileSize       *int64  `json:"file_size"`
-	MimeType       *string `json:"mime_type"`
-	// 回复数据源开关（仅 AI 模式有效），不传则默认：知识库+大模型开，联网关
-	UseKnowledgeBase *bool `json:"use_knowledge_base"`
-	UseLLM           *bool `json:"use_llm"`
-	UseWebSearch     *bool `json:"use_web_search"`
-	NeedWebSearch    bool  `json:"need_web_search"`
-}
-
+...
 // CreateMessage 处理发送消息的请求。
 func (mc *MessageController) CreateMessage(c *gin.Context) {
 	var req createMessageRequest
@@ -62,221 +24,67 @@ func (mc *MessageController) CreateMessage(c *gin.Context) {
 		return
 	}
 	userID := getUserIDFromHeader(c)
-	// 兼容 demo 自测场景：已登录客服也允许按访客身份发送消息（sender_is_agent=false）。
-	// 访客消息 sender_id 仍由服务端强制置 0，避免前端注入身份。
-	// 客服消息必须绑定当前登录用户（X-User-Id），并以服务端用户 ID 为准，避免伪造 sender_id。
+
+	// 如果是从公共接口以客服身份发送，必须校验 Token
 	if req.SenderIsAgent {
+		// 1. 如果 RequireAuth 中间件已经校验过并注入了 user_id，则 userID > 0 且可信
+		// 2. 如果是公共接口（如 /messages），则需要手动校验 Authorization 头
+		if _, ok := c.Get("user_id"); !ok {
+			authHeader := c.GetHeader("Authorization")
+			if authHeader != "" && len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+				token := authHeader[7:]
+				uid, parseErr := utils.ParseWSToken(token)
+				if parseErr == nil {
+					userID = uid
+				} else {
+					log.Printf("⚠️ CreateMessage 令牌校验失败: %v", parseErr)
+					userID = 0
+				}
+			} else {
+				// 没提供 Token，且尝试以客服身份发送，直接拒绝（即使提供了 X-User-Id 也不能信任）
+				userID = 0
+			}
+		}
+
 		if userID == 0 {
-			c.JSON(http.StatusForbidden, gin.H{"error": "未授权访问，请提供 X-User-Id 请求头"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "未授权访问，请提供有效的认证令牌"})
 			return
 		}
 		req.SenderID = userID
-		if mc.userService != nil {
-			// 按会话类型进行权限校验：
-			// - visitor 会话：需要 chat 权限
-			// - internal 会话：需要 kb_test 权限，且仅会话创建者可发送
-			detail, err := mc.conversationService.GetConversationDetail(req.ConversationID, userID)
-			if err != nil {
-				c.JSON(http.StatusForbidden, gin.H{"error": "无权限访问该会话"})
-				return
-			}
-			if detail.ConversationType == "internal" {
-				if detail.AgentID != userID {
-					c.JSON(http.StatusForbidden, gin.H{"error": "仅内部会话创建者可发送消息"})
-					return
-				}
-				if err := mc.userService.CheckPermission(userID, string(service.PermKBTest)); err != nil {
-					c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-					return
-				}
-			} else {
-				if err := mc.userService.CheckPermission(userID, string(service.PermChat)); err != nil {
-					c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-					return
-				}
-			}
-		}
-	} else {
-		// 访客消息的 sender_id 统一由服务端置 0，避免前端注入。
-		req.SenderID = 0
-	}
-
-	// 验证：必须有内容或文件
-	if req.Content == "" && req.FileURL == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "消息内容或文件不能同时为空"})
-		return
-	}
-
-	msg, err := mc.messageService.CreateMessage(service.CreateMessageInput{
-		ConversationID:   req.ConversationID,
-		Content:          req.Content,
-		SenderID:         req.SenderID,
-		SenderIsAgent:    req.SenderIsAgent,
-		FileURL:          req.FileURL,
-		FileType:         req.FileType,
-		FileName:         req.FileName,
-		FileSize:         req.FileSize,
-		MimeType:         req.MimeType,
-		UseKnowledgeBase: req.UseKnowledgeBase,
-		UseLLM:           req.UseLLM,
-		UseWebSearch:     req.UseWebSearch,
-		NeedWebSearch:    req.NeedWebSearch,
-	})
-	if err != nil {
-		log.Printf("❌ 创建消息失败: 对话ID=%d, 错误=%v", req.ConversationID, err)
-		switch err {
-		case service.ErrConversationClosed:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "会话已关闭"})
-		case service.ErrConversationNotFound:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "会话不存在"})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "创建消息失败"})
-		}
-		return
-	}
-
-	// 返回持久化后的完整消息：客服端/访客端可在发送成功后立即更新 UI，避免仅依赖 WebSocket 时出现「空了要等刷新」
-	c.JSON(http.StatusOK, msg)
-}
-
-// ListMessages 返回指定会话的消息列表。
-// 查询参数：
-//   - conversation_id: 会话ID（必需）
-//   - include_ai_messages: 是否包含 AI 消息（可选，默认 false）
-func (mc *MessageController) ListMessages(c *gin.Context) {
-	conversationIDStr := c.Query("conversation_id")
-	if conversationIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "会话ID不能为空"})
-		return
-	}
-
-	conversationID, err := strconv.ParseUint(conversationIDStr, 10, 64)
-	if err != nil || conversationID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "会话ID不合法"})
-		return
-	}
-	if mc.userService != nil {
-		userID := getUserIDFromHeader(c)
-		detail, detailErr := mc.conversationService.GetConversationDetail(uint(conversationID), userID)
-		if detailErr != nil && userID > 0 {
-			c.JSON(http.StatusForbidden, gin.H{"error": "无权限访问该会话"})
-			return
-		}
-		if detail != nil {
-			if detail.ConversationType == "internal" {
-				if userID == 0 || detail.AgentID != userID {
-					c.JSON(http.StatusForbidden, gin.H{"error": "无权限访问内部会话"})
-					return
-				}
-				if err := mc.userService.CheckPermission(userID, string(service.PermKBTest)); err != nil {
-					c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-					return
-				}
-			} else if userID > 0 {
-				if err := mc.userService.CheckPermission(userID, string(service.PermChat)); err != nil {
-					c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-					return
-				}
-			}
-		}
-	}
-
-	// 解析 include_ai_messages 参数（默认 false）
-	includeAIMessages := c.DefaultQuery("include_ai_messages", "false") == "true"
-
-	messages, err := mc.messageService.ListMessages(uint(conversationID), includeAIMessages)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询消息失败"})
-		return
-	}
-
-	c.JSON(http.StatusOK, messages)
-}
-
-type markMessagesReadRequest struct {
-	ConversationID uint `json:"conversation_id"`
-	ReaderIsAgent  bool `json:"reader_is_agent"`
-}
-
-// MarkMessagesRead 将指定会话的消息标记为已读。
-func (mc *MessageController) MarkMessagesRead(c *gin.Context) {
-	var req markMessagesReadRequest
-	if err := c.ShouldBindJSON(&req); err != nil || req.ConversationID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
-		return
-	}
-	if mc.userService != nil {
-		userID := getUserIDFromHeader(c)
-		detail, detailErr := mc.conversationService.GetConversationDetail(req.ConversationID, userID)
-		if detailErr != nil && userID > 0 {
-			c.JSON(http.StatusForbidden, gin.H{"error": "无权限访问该会话"})
-			return
-		}
-		if detail != nil {
-			if detail.ConversationType == "internal" {
-				if userID == 0 || detail.AgentID != userID {
-					c.JSON(http.StatusForbidden, gin.H{"error": "无权限访问内部会话"})
-					return
-				}
-			}
-			if req.ReaderIsAgent {
-				if userID == 0 {
-					c.JSON(http.StatusForbidden, gin.H{"error": "未授权访问，请提供 X-User-Id 请求头"})
-					return
-				}
-				if detail.ConversationType == "internal" {
-					if err := mc.userService.CheckPermission(userID, string(service.PermKBTest)); err != nil {
-						c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-						return
-					}
-				} else {
-					if err := mc.userService.CheckPermission(userID, string(service.PermChat)); err != nil {
-						c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-						return
-					}
-				}
-			}
-		}
-	}
-
-	result, err := mc.messageService.MarkMessagesRead(req.ConversationID, req.ReaderIsAgent)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新消息状态失败"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"updated":         len(result.MessageIDs),
-		"message_ids":     result.MessageIDs,
-		"conversation_id": result.ConversationID,
-		"unread_count":    result.UnreadCount,
-		"read_at":         formatTimeValue(result.ReadAt),
-	})
-}
-
+...
 // UploadFile 处理文件上传请求。
 // 请求格式：multipart/form-data
 //   - file: 文件内容（必需）
 //   - conversation_id: 对话ID（可选，用于组织目录）
 //
 // 认证方式：
-//   - 方式1：提供 X-User-Id 请求头（客服上传）
+//   - 方式1：提供有效的认证令牌 (Bearer Token)（客服上传）
 //   - 方式2：提供 conversation_id 参数（访客上传，会验证对话是否存在且未关闭）
 func (mc *MessageController) UploadFile(c *gin.Context) {
 	// ⚠️ 认证检查：必须满足以下条件之一
-	// 1. 提供 X-User-Id 请求头（客服）
+	// 1. 提供有效的认证令牌（客服）
 	// 2. 提供 conversation_id 参数（访客）
-	userID := getUserIDFromHeader(c)
+	userID := uint(0)
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" && len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token := authHeader[7:]
+		uid, parseErr := utils.ParseWSToken(token)
+		if parseErr == nil {
+			userID = uid
+		}
+	}
+
 	conversationIDStr := c.PostForm("conversation_id")
 
-	// 如果既没有用户ID，也没有对话ID，拒绝访问
+	// 如果既没有有效的令牌，也没有对话ID，拒绝访问
 	if userID == 0 && conversationIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问，请提供 X-User-Id 请求头或 conversation_id 参数"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问，请提供有效的认证令牌或 conversation_id 参数"})
 		return
 	}
 
-	// 如果是访客上传（没有用户ID，但有对话ID），验证对话是否存在且未关闭
+	// 如果是访客上传（没有有效的客服令牌，但有对话ID），验证对话是否存在且未关闭
 	if userID == 0 && conversationIDStr != "" {
+
 		convID, err := strconv.ParseUint(conversationIDStr, 10, 64)
 		if err != nil || convID == 0 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "对话ID不合法"})

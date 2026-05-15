@@ -6,9 +6,9 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/2930134478/AI-CS/backend/models"
-	"github.com/2930134478/AI-CS/backend/repository"
-	"github.com/2930134478/AI-CS/backend/service/rag"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/service/rag"
 )
 
 // DocumentService 文档管理服务

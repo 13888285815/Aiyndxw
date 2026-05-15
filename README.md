@@ -1,4 +1,4 @@
-# AI-CS 智能客服系统
+# WorkBuddy AI 智能客服系统
 
 > 开源的 AI 客服系统：**AI + 人工一体**、可私有化部署、可配置、可观测。  
 > 适合把“官网右下角客服小窗”与“客服工作台”一起落地的团队。
@@ -20,9 +20,9 @@
 
 ## 在线演示
 
-- **官网首页（产品介绍 + SEO）**：[demo.cscorp.top](https://demo.cscorp.top)
-- **访客聊天页**：[demo.cscorp.top/chat](https://demo.cscorp.top/chat)（也可从首页右下角按钮进入）
-- **客服登录**：[demo.cscorp.top/agent/login](https://demo.cscorp.top/agent/login)
+- **官网首页（产品介绍 + SEO）**：[tools.yndxw.com](https://tools.yndxw.com)
+- **访客聊天页**：[tools.yndxw.com/chat](https://tools.yndxw.com/chat)（也可从首页右下角按钮进入）
+- **客服登录**：[tools.yndxw.com/agent/login](https://tools.yndxw.com/agent/login)
 
 ## 你能用它做什么
 
@@ -55,8 +55,8 @@
 #### 1）准备配置
 
 ```bash
-git clone https://github.com/2930134478/AI-CS.git
-cd AI-CS
+git clone https://github.com/yndxw/workbuddy-ai.git
+cd WorkBuddy AI
 cp .env.example .env
 ```
 
@@ -108,8 +108,8 @@ docker-compose -f docker-compose.prod.yml up -d
 ### 方式 B：Docker 本地构建部署（可自定义）
 
 ```bash
-git clone https://github.com/2930134478/AI-CS.git
-cd AI-CS
+git clone https://github.com/yndxw/workbuddy-ai.git
+cd WorkBuddy AI
 cp .env.example .env
 docker-compose up -d --build
 ```
@@ -122,8 +122,8 @@ docker-compose up -d --build
 - MySQL 8.0+
 
 ```bash
-git clone https://github.com/2930134478/AI-CS.git
-cd AI-CS
+git clone https://github.com/yndxw/workbuddy-ai.git
+cd WorkBuddy AI
 cp .env.example .env
 
 # 1) 后端
@@ -150,9 +150,9 @@ npm run dev
 | `SYSTEM_LOG_MIN_LEVEL` | 结构化日志最低落库级别（`system_logs`） | 否 | `info` | `warn` 可减少成功类写入；`none` 关闭落库；**客服端「日志中心」可改并持久化，覆盖本项直至恢复** |
 | `DB_HOST` | 后端数据库地址 | 是 | `mysql` | `localhost` |
 | `DB_PORT` | 后端数据库端口 | 是 | `3306` | `3306` |
-| `DB_USER` | 数据库用户名 | 是 | `ai_cs_user` | `root` |
+| `DB_USER` | 数据库用户名 | 是 | `workbuddy_ai_user` | `root` |
 | `DB_PASSWORD` | 数据库密码 | 是 | 无 | `StrongPwd` |
-| `DB_NAME` | 数据库名 | 是 | `ai_cs` | `ai_cs` |
+| `DB_NAME` | 数据库名 | 是 | `workbuddy_ai` | `workbuddy_ai` |
 | `MYSQL_ROOT_PASSWORD` | MySQL root 密码（compose） | 是（Docker） | 无 | `RootPwd` |
 | `MYSQL_PORT` | MySQL 对外端口（compose） | 否 | `3306` | `13306` |
 | `ADMIN_USERNAME` | 默认管理员用户名 | 否 | `admin` | `admin` |
@@ -162,7 +162,7 @@ npm run dev
 | `REDIS_ADDR` | Redis 地址（与 `REDIS_URL` 二选一） | 可选 | 空 | `redis:6379` |
 | `REDIS_PASSWORD` | Redis 密码（使用 `REDIS_ADDR` 时） | 可选 | 空 | `StrongRedisPwd` |
 | `REDIS_DB` | Redis DB（使用 `REDIS_ADDR` 时） | 可选 | `0` | `0` |
-| `REDIS_WS_CHANNEL` | 分布式 WS 事件频道名 | 可选 | `ai_cs:ws_events` | `ai_cs:ws_events` |
+| `REDIS_WS_CHANNEL` | 分布式 WS 事件频道名 | 可选 | `workbuddy_ai:ws_events` | `workbuddy_ai:ws_events` |
 | `BACKEND_PORT` | 后端映射到宿主机端口 | 否 | `18080` | `28080` |
 | `FRONTEND_PORT` | 前端映射到宿主机端口 | 否 | `3000` | `13000` |
 | `MILVUS_HOST` | 向量库地址 | 可选（启用 RAG） | `milvus-standalone` | `localhost` |
@@ -179,8 +179,8 @@ npm run dev
 | `NEXT_PUBLIC_BACKEND_HOST` | 前端 dev 代理目标 host | 否 | `localhost` | `127.0.0.1` |
 | `NEXT_PUBLIC_BACKEND_PORT` | 前端 dev 代理目标 port | 否 | `8080` | `18080` |
 | `NEXT_PUBLIC_MATOMO_CONTAINER_URL` | Matomo 脚本地址 | 可选 | 空 | `https://.../container.js` |
-| `BACKEND_IMAGE` | 预构建后端镜像（prod compose） | 是（prod） | `537yaha/ai-cs-backend:latest` | `your/backend:tag` |
-| `FRONTEND_IMAGE` | 预构建前端镜像（prod compose） | 是（prod） | `537yaha/ai-cs-frontend:latest` | `your/frontend:tag` |
+| `BACKEND_IMAGE` | 预构建后端镜像（prod compose） | 是（prod） | `yndxw/workbuddy-ai-backend:latest` | `your/backend:tag` |
+| `FRONTEND_IMAGE` | 预构建前端镜像（prod compose） | 是（prod） | `yndxw/workbuddy-ai-frontend:latest` | `your/frontend:tag` |
 
 ## 启用/关闭知识库（RAG）的推荐做法
 
@@ -193,16 +193,16 @@ npm run dev
 
 - 单实例可不配置 Redis，系统维持当前行为。
 - 多实例/多副本部署建议配置 `REDIS_URL`（或 `REDIS_ADDR` + `REDIS_PASSWORD` + `REDIS_DB`），用于 WebSocket 事件跨实例同步。
-- 可通过 `REDIS_WS_CHANNEL` 自定义事件频道（默认 `ai_cs:ws_events`）。
+- 可通过 `REDIS_WS_CHANNEL` 自定义事件频道（默认 `workbuddy_ai:ws_events`）。
 
 ## 集成访客小窗到你的网站（iframe）
 
 把下面代码放到你网站的 `</body>` 前，核心是把 `src` 指向你自己的部署域名的 `/chat`：
 
 ```html
-<div id="ai-cs-widget" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
+<div id="workbuddy-ai-widget" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
   <button
-    id="ai-cs-toggle-btn"
+    id="workbuddy-ai-toggle-btn"
     style="width:56px;height:56px;border-radius:50%;background:#3b82f6;color:#fff;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);"
     onclick="toggleChat()"
   >
@@ -210,7 +210,7 @@ npm run dev
   </button>
 
   <iframe
-    id="ai-cs-chat-iframe"
+    id="workbuddy-ai-chat-iframe"
     src="https://你的域名/chat"
     style="display:none;position:fixed;bottom:80px;right:20px;width:400px;height:600px;max-width:calc(100vw - 40px);max-height:calc(100vh - 100px);border:none;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,.1);"
   ></iframe>
@@ -218,7 +218,7 @@ npm run dev
 
 <script>
   function toggleChat() {
-    const iframe = document.getElementById("ai-cs-chat-iframe");
+    const iframe = document.getElementById("workbuddy-ai-chat-iframe");
     iframe.style.display = iframe.style.display !== "none" ? "none" : "block";
   }
 </script>
@@ -226,7 +226,7 @@ npm run dev
 
 ## 相关文档
 
-- **知识库 / 内部 Wiki 导入（项目总览一篇通）**：[doc/AI-CS-知识库-项目总览.md](doc/AI-CS-知识库-项目总览.md)
+- **知识库 / 内部 Wiki 导入（项目总览一篇通）**：[doc/WorkBuddy AI-知识库-项目总览.md](doc/WorkBuddy AI-知识库-项目总览.md)
 
 ## 常见问题与排障（先看这里）
 
@@ -240,7 +240,7 @@ npm run dev
 
 ## 许可证
 
-[MIT](LICENSE) © 2025 2930134478
+[MIT](LICENSE) © 2025 yndxw
 
 ---
 

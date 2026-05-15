@@ -4,8 +4,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/2930134478/AI-CS/backend/infra"
-	"github.com/2930134478/AI-CS/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/infra"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
 	"gorm.io/gorm"
 )
 

@@ -1,11 +1,11 @@
 /**
- * AI-CS 访客聊天小窗插件
+ * WorkBuddy AI 访客聊天小窗插件
  * 可嵌入到任何网站中，提供客服聊天功能
  * 
  * 使用方法：
  * <script src="https://your-domain.com/widget.js"></script>
  * <script>
- *   AICSWidget.init({
+ *   WorkBuddyAIWidget.init({
  *     apiUrl: 'https://your-api-domain.com',
  *     position: 'bottom-right' // 可选：'bottom-right' | 'bottom-left'
  *   });
@@ -18,8 +18,8 @@
   // 配置（从全局变量或默认值读取后端端口）
   const getDefaultBackendPort = () => {
     // 优先使用全局变量（可在页面中通过 script 标签设置）
-    if (typeof window !== 'undefined' && window.AICS_BACKEND_PORT) {
-      return window.AICS_BACKEND_PORT;
+    if (typeof window !== 'undefined' && window.WorkBuddyAI_BACKEND_PORT) {
+      return window.WorkBuddyAI_BACKEND_PORT;
     }
     // 默认端口 18080（避免与常用端口冲突）
     return '18080';
@@ -40,10 +40,10 @@
    */
   function createFloatingButton() {
     const button = document.createElement('button');
-    button.className = 'ai-cs-widget-button';
+    button.className = 'workbuddy-ai-widget-button';
     button.setAttribute('aria-label', '打开客服聊天');
     button.innerHTML = `
-      <svg class="ai-cs-widget-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="workbuddy-ai-widget-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
       </svg>
     `;
@@ -91,7 +91,7 @@
    */
   function createChatWindow() {
     const iframe = document.createElement('iframe');
-    iframe.id = 'ai-cs-widget-iframe';
+    iframe.id = 'workbuddy-ai-widget-iframe';
     iframe.src = config.chatPageUrl || `${config.apiUrl.replace('/api', '')}/chat`;
     iframe.style.cssText = `
       position: fixed;
@@ -115,15 +115,15 @@
    * 切换聊天窗口显示/隐藏
    */
   function toggleWidget() {
-    const iframe = document.getElementById('ai-cs-widget-iframe');
+    const iframe = document.getElementById('workbuddy-ai-widget-iframe');
     if (iframe) {
       const isVisible = iframe.style.display !== 'none';
       iframe.style.display = isVisible ? 'none' : 'block';
       
       // 更新按钮图标
-      const button = document.querySelector('.ai-cs-widget-button');
+      const button = document.querySelector('.workbuddy-ai-widget-button');
       if (button) {
-        const icon = button.querySelector('.ai-cs-widget-icon');
+        const icon = button.querySelector('.workbuddy-ai-widget-icon');
         if (icon) {
           if (isVisible) {
             // 显示聊天图标
@@ -142,7 +142,7 @@
    */
   function init(userConfig) {
     if (isInitialized) {
-      console.warn('AI-CS Widget 已经初始化');
+      console.warn('WorkBuddy AI Widget 已经初始化');
       return;
     }
 
@@ -151,7 +151,7 @@
 
     // 创建容器
     widgetContainer = document.createElement('div');
-    widgetContainer.id = 'ai-cs-widget-container';
+    widgetContainer.id = 'workbuddy-ai-widget-container';
     widgetContainer.style.cssText = 'position: fixed; bottom: 0; z-index: 9999;';
 
     // 创建浮动按钮
@@ -166,7 +166,7 @@
     document.body.appendChild(widgetContainer);
 
     isInitialized = true;
-    console.log('AI-CS Widget 初始化成功');
+    console.log('WorkBuddy AI Widget 初始化成功');
   }
 
   /**
@@ -177,12 +177,12 @@
       widgetContainer.parentNode.removeChild(widgetContainer);
       widgetContainer = null;
       isInitialized = false;
-      console.log('AI-CS Widget 已销毁');
+      console.log('WorkBuddy AI Widget 已销毁');
     }
   }
 
   // 暴露全局 API
-  window.AICSWidget = {
+  window.WorkBuddyAIWidget = {
     init: init,
     destroy: destroy,
     toggle: toggleWidget
@@ -191,7 +191,7 @@
   // 如果 DOM 已加载，自动初始化（使用默认配置）
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-      // 不自动初始化，需要用户手动调用 AICSWidget.init()
+      // 不自动初始化，需要用户手动调用 WorkBuddyAIWidget.init()
     });
   }
 })();

@@ -100,7 +100,7 @@ export function MessageList({
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const typewriterStorageKey =
-    conversationId != null ? `ai_cs_typewriter_seen_ai_${conversationId}` : null;
+    conversationId != null ? `workbuddy_ai_typewriter_seen_ai_${conversationId}` : null;
 
   const loadTypewriterSeenSet = useCallback(() => {
     if (typeof window === "undefined" || !typewriterStorageKey) {

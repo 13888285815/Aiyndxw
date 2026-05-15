@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2930134478/AI-CS/backend/service"
+	"github.com/yndxw/workbuddy-ai/backend/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,9 +25,17 @@ func parseUintQuery(c *gin.Context, name string) (uint64, error) {
 	return strconv.ParseUint(value, 10, 64)
 }
 
-// getUserIDFromHeader 从请求头 X-User-Id 读取当前用户 ID（用于知识库开关校验）
-// 若未设置则返回 0（调用方可按需放行或拒绝）
+// getUserIDFromHeader 从请求读取当前用户 ID。
+// 修复点：优先从上下文读取（由 RequireAuth 校验 Token 后注入），防止伪造 X-User-Id。
 func getUserIDFromHeader(c *gin.Context) uint {
+	// 1. 优先从上下文获取（安全方式：RequireAuth 校验 Token 后设置）
+	if v, ok := c.Get("user_id"); ok {
+		if id, ok2 := v.(uint); ok2 {
+			return id
+		}
+	}
+
+	// 2. 降级：从请求头 X-User-Id 读取（非安全方式，建议生产环境仅允许 Token 模式）
 	value := c.GetHeader("X-User-Id")
 	if value == "" {
 		return 0

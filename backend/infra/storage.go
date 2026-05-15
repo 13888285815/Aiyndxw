@@ -103,7 +103,15 @@ func (s *LocalStorageService) ReadMessageFile(fileURLOrPath string) ([]byte, err
 	if pathPart == "" {
 		return nil, fmt.Errorf("无法从 URL 解析出相对路径: %s", fileURLOrPath)
 	}
-	fullPath := filepath.Join(s.baseDir, pathPart)
+
+	// 路径安全校验：防止路径穿越 (Path Traversal)
+	// 使用 Clean 清理路径中的 .. 等
+	cleanPath := filepath.Clean(pathPart)
+	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+		return nil, fmt.Errorf("非法的文件访问路径: %s", fileURLOrPath)
+	}
+
+	fullPath := filepath.Join(s.baseDir, cleanPath)
 	return os.ReadFile(fullPath)
 }
 
@@ -122,8 +130,14 @@ func (s *LocalStorageService) DeleteFile(fileURL string) error {
 			}
 		}
 	}
-	
-	filePath := filepath.Join(s.baseDir, relativePath)
+
+	// 路径安全校验
+	cleanPath := filepath.Clean(relativePath)
+	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+		return fmt.Errorf("非法的文件删除路径: %s", fileURL)
+	}
+
+	filePath := filepath.Join(s.baseDir, cleanPath)
 	if err := os.Remove(filePath); err != nil {
 		if os.IsNotExist(err) {
 			return nil // 文件不存在，认为删除成功

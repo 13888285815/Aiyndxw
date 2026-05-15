@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/2930134478/AI-CS/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/models"
 )
 
 // OnClientConnectCallback 客户端连接时的回调函数。

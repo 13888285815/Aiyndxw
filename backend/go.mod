@@ -1,4 +1,4 @@
-module github.com/2930134478/AI-CS/backend
+module github.com/yndxw/workbuddy-ai/backend
 
 go 1.24.1
 

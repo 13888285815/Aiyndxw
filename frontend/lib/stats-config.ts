@@ -13,7 +13,7 @@ export const testimonials = [
   {
     name: "张总",
     company: "某科技公司",
-    content: "AI-CS 让我们的客服效率提升了 300%，客户满意度也大幅提升。",
+    content: "WorkBuddy AI 让我们的客服效率提升了 300%，客户满意度也大幅提升。",
   },
   {
     name: "李经理",

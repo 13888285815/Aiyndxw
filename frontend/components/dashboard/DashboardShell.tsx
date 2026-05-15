@@ -123,7 +123,7 @@ export function DashboardShell() {
   }, [conversations]);
 
   // 更新页面标题显示未读消息数
-  usePageTitle(totalUnreadCount, "AI-CS");
+  usePageTitle(totalUnreadCount, "WorkBuddy AI");
 
   // 输入框内容与搜索高亮关键字
   const [messageInput, setMessageInput] = useState("");

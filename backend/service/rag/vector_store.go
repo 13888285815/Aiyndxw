@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/2930134478/AI-CS/backend/infra"
+	"github.com/yndxw/workbuddy-ai/backend/infra"
 )
 
 // ErrVectorStoreUnavailable 向量库未启用或未连接（写入/索引前会返回该错误）。

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/2930134478/AI-CS/backend/service/embedding"
+	"github.com/yndxw/workbuddy-ai/backend/service/embedding"
 )
 
 // DocumentEmbeddingService 文档向量化服务

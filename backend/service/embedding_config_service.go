@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/2930134478/AI-CS/backend/models"
-	"github.com/2930134478/AI-CS/backend/repository"
-	"github.com/2930134478/AI-CS/backend/utils"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/utils"
 )
 
 // EmbeddingConfigService 知识库向量配置服务

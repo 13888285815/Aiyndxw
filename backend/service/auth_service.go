@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 
-	"github.com/2930134478/AI-CS/backend/models"
-	"github.com/2930134478/AI-CS/backend/repository"
+	"github.com/yndxw/workbuddy-ai/backend/models"
+	"github.com/yndxw/workbuddy-ai/backend/repository"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
