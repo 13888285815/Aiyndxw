@@ -24,22 +24,16 @@ func NewAdminController(authService *service.AuthService, userService *service.U
 }
 
 // checkAdminPermission 检查当前用户是否是管理员。
-// 修复点：改用 getUserIDFromHeader，优先从 Token 校验结果中获取 userID，防止通过 query 伪造 identity。
 func (a *AdminController) checkAdminPermission(c *gin.Context) (uint, bool) {
-	userID := getUserIDFromHeader(c)
-
-	// 如果 getUserIDFromHeader 没拿到，再尝试 query（仅为了向下兼容，极度不推荐）
-	if userID == 0 {
-		userIDStr := c.Query("current_user_id")
-		if userIDStr != "" {
-			if id, err := strconv.ParseUint(userIDStr, 10, 64); err == nil {
-				userID = uint(id)
-			}
-		}
+	// 从中间件注入的 Context 中获取 userID
+	val, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问，请重新登录"})
+		return 0, false
 	}
-
-	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未提供或无效的当前用户身份"})
+	userID, ok := val.(uint)
+	if !ok || userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的用户身份"})
 		return 0, false
 	}
 

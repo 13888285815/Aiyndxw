@@ -4,7 +4,7 @@
  */
 
 // 开发时代理目标端口（统一从根目录 .env 读取 NEXT_PUBLIC_BACKEND_*）
-const backendPort = process.env.NEXT_PUBLIC_BACKEND_PORT || "8080";
+const backendPort = process.env.NEXT_PUBLIC_BACKEND_PORT || "18080";
 const backendHost = process.env.NEXT_PUBLIC_BACKEND_HOST || "localhost";
 
 /** @type {import('next').NextConfig} */

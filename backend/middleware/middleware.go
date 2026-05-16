@@ -13,15 +13,12 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
-...
-func CORS() gin.HandlerFunc {
-	return cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "X-User-Id", "X-Trace-Id", "Authorization"},
-		AllowCredentials: true,
-	})
-}
+
+func newTraceID() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
 	return hex.EncodeToString(b[:])
 }
 
@@ -41,7 +38,6 @@ func TraceID() gin.HandlerFunc {
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		//继续调用后续的中间件处理函数
 		c.Next()
 		log.Printf("[GIN] %s %s %d %s",
 			c.Request.Method, c.Request.URL.Path, c.Writer.Status(), time.Since(start))
@@ -102,14 +98,14 @@ func StructuredHTTPLogger(logSvc *service.SystemLogService) gin.HandlerFunc {
 func CORS() gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "X-User-Id", "X-Trace-Id"},
-		AllowCredentials: false,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "X-User-Id", "X-Trace-Id", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	})
 }
 
 // RequireAuth 认证中间件：要求请求头中包含有效的令牌 (Bearer Token) 或有效的 X-User-Id
-// 修复点：添加令牌校验逻辑，防止仅凭 X-User-Id 伪造身份
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var userID uint
@@ -126,15 +122,12 @@ func RequireAuth() gin.HandlerFunc {
 			}
 		}
 
-		// 2. 降级逻辑：如果令牌无效，且没有令牌，则检查 X-User-Id (仅用于开发调试或特定场景，生产建议禁用)
-		// 注意：为了安全性，如果提供了 Authorization 但校验失败，应直接拒绝
+		// 2. 降级逻辑：如果令牌无效，且没有令牌，则检查 X-User-Id (仅用于开发调试)
 		if userID == 0 {
 			userIDStr := c.GetHeader("X-User-Id")
 			if userIDStr != "" {
 				id, parseErr := strconv.ParseUint(userIDStr, 10, 64)
 				if parseErr == nil && id > 0 {
-					// ⚠️ 警告：仅凭 X-User-Id 认证是不安全的
-					// 在生产环境中应强制要求 Token
 					userID = uint(id)
 				}
 			}
@@ -146,7 +139,6 @@ func RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		// 将用户ID存储到上下文中，供后续使用
 		c.Set("user_id", userID)
 		c.Next()
 	}

@@ -177,71 +177,7 @@ npm run dev
 | `NEXT_PUBLIC_SITE_URL` | 站点对外绝对地址（用于 SEO） | 否 | 空（默认 demo 域名） | `https://www.example.com` |
 | `NEXT_PUBLIC_API_BASE_URL` | 前端公开 API 地址 | 建议 | `http://localhost:18080` | `https://api.example.com` |
 | `NEXT_PUBLIC_BACKEND_HOST` | 前端 dev 代理目标 host | 否 | `localhost` | `127.0.0.1` |
-| `NEXT_PUBLIC_BACKEND_PORT` | 前端 dev 代理目标 port | 否 | `8080` | `18080` |
-| `NEXT_PUBLIC_MATOMO_CONTAINER_URL` | Matomo 脚本地址 | 可选 | 空 | `https://.../container.js` |
-| `BACKEND_IMAGE` | 预构建后端镜像（prod compose） | 是（prod） | `yndxw/workbuddy-ai-backend:latest` | `your/backend:tag` |
-| `FRONTEND_IMAGE` | 预构建前端镜像（prod compose） | 是（prod） | `yndxw/workbuddy-ai-frontend:latest` | `your/frontend:tag` |
+| `NEXT_PUBLIC_BACKEND_PORT` | 前端 dev 代理目标 port | 否 | `18080` | `18080` |
+...
+**最后更新**：2026-05-16（含零门槛本地启动脚本说明）
 
-## 启用/关闭知识库（RAG）的推荐做法
-
-- **你暂时不想用知识库**：把 `.env` 里 `MILVUS_DISABLED=true`（或 `VECTOR_STORE_DISABLED=true`）
-  - 应用仍可启动，AI 对话与人工客服不受影响
-- **你必须依赖知识库**（生产强约束）：把 `.env` 里 `MILVUS_REQUIRED=true`
-  - 此时如果 Milvus 不可用，会落库一条错误日志后退出，避免“半残服务上线”
-
-## 多实例实时消息一致性（Redis）
-
-- 单实例可不配置 Redis，系统维持当前行为。
-- 多实例/多副本部署建议配置 `REDIS_URL`（或 `REDIS_ADDR` + `REDIS_PASSWORD` + `REDIS_DB`），用于 WebSocket 事件跨实例同步。
-- 可通过 `REDIS_WS_CHANNEL` 自定义事件频道（默认 `workbuddy_ai:ws_events`）。
-
-## 集成访客小窗到你的网站（iframe）
-
-把下面代码放到你网站的 `</body>` 前，核心是把 `src` 指向你自己的部署域名的 `/chat`：
-
-```html
-<div id="workbuddy-ai-widget" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
-  <button
-    id="workbuddy-ai-toggle-btn"
-    style="width:56px;height:56px;border-radius:50%;background:#3b82f6;color:#fff;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);"
-    onclick="toggleChat()"
-  >
-    Chat
-  </button>
-
-  <iframe
-    id="workbuddy-ai-chat-iframe"
-    src="https://你的域名/chat"
-    style="display:none;position:fixed;bottom:80px;right:20px;width:400px;height:600px;max-width:calc(100vw - 40px);max-height:calc(100vh - 100px);border:none;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,.1);"
-  ></iframe>
-</div>
-
-<script>
-  function toggleChat() {
-    const iframe = document.getElementById("workbuddy-ai-chat-iframe");
-    iframe.style.display = iframe.style.display !== "none" ? "none" : "block";
-  }
-</script>
-```
-
-## 相关文档
-
-- **知识库 / 内部 Wiki 导入（项目总览一篇通）**：[doc/WorkBuddy AI-知识库-项目总览.md](doc/WorkBuddy AI-知识库-项目总览.md)
-
-## 常见问题与排障（先看这里）
-
-- **提示音听不到**：浏览器通常需要“用户一次交互”才能解锁音频；请先点一下页面任意按钮/再打开喇叭开关测试
-- **向量库连不上导致启动失败**：检查 `.env` 的 `MILVUS_REQUIRED` 是否误开；不需要知识库时建议 `MILVUS_DISABLED=true`
-- **搜不到站点/分享卡片不正确**：设置 `NEXT_PUBLIC_SITE_URL=https://你的域名`，用于 canonical / OG / sitemap 生成
-          
-## 贡献
-
-欢迎提交 Issue 和 Pull Request。
-
-## 许可证
-
-[MIT](LICENSE) © 2025 yndxw
-
----
-
-**最后更新**：2026-04-02（含 `SYSTEM_LOG_MIN_LEVEL` 说明）
