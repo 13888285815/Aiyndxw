@@ -1,10 +1,9 @@
-# WorkBuddy AI 智能客服系统
+# “工作伙伴人工智能”智能客服系统
 
-> 开源的 AI 客服系统：**AI + 人工一体**、可私有化部署、可配置、可观测。  
+> 开源的人工智能客服系统：**人工智能与人工一体**、可私有化部署、可配置、可观测。  
 > 适合把“官网右下角客服小窗”与“客服工作台”一起落地的团队。
 
 ## 界面预览
-
 
 **官网首页（核心能力模块）**
 
@@ -14,170 +13,146 @@
 
 ![客服小窗（人工客服模式）](assets/readme/widget-human.png)
 
-**客服小窗（AI 客服模式）**
+**客服小窗（人工智能客服模式）**
 
-![客服小窗（AI 客服模式）](assets/readme/widget-ai.png)
+![客服小窗（人工智能客服模式）](assets/readme/widget-ai.png)
 
 ## 在线演示
 
-- **官网首页（产品介绍 + SEO）**：[tools.yndxw.com](https://tools.yndxw.com)
+- **官网首页（产品介绍与搜索引擎优化）**：[tools.yndxw.com](https://tools.yndxw.com)
 - **访客聊天页**：[tools.yndxw.com/chat](https://tools.yndxw.com/chat)（也可从首页右下角按钮进入）
 - **客服登录**：[tools.yndxw.com/agent/login](https://tools.yndxw.com/agent/login)
 
-## 你能用它做什么
+## 您能用它做什么
 
 - **访客侧（嵌入小窗）**
-  - 右下角聊天小窗，可嵌入任意网站（iframe 方式）
-  - 支持 AI 模式 / 人工模式切换、消息提示音、文件上传
+  - 右下角聊天小窗，可嵌入任意网站（内嵌框架方式）
+  - 支持人工智能模式与人工模式切换、消息提示音、文件上传
   - 可选“本回合联网搜索”开关（是否对访客展示可在后台控制）
 - **客服侧（工作台）**
-  - 会话列表、实时消息（WebSocket）、未读角标提示
+  - 会话列表、实时消息（网络套接字）、未读角标提示
   - 支持“实时共享草稿输入”（双方未发送内容可实时可见）
-  - 多模型管理（文本/绘画等）与对话配置
-  - **提示词配置**（Prompt 管理）
-  - **知识库管理 + RAG**（向量检索，可按需启用；向量库不可用时可不影响启动）
-  - **日志中心**：结构化日志落库，支持按级别/分类/事件/trace_id/关键字筛选排障
-  - **数据报表**：按日/区间查看访客打开小窗、会话与消息、AI 回复与失败率、知识库命中率、转人工等指标
-- **官网与 SEO（面向获客）**
+  - 多模型管理（文本与绘画等）与对话配置
+  - **提示词配置**（提示语管理）
+  - **知识库管理与检索增强生成**（向量检索，可按需启用；向量库不可用时可不影响启动）
+  - **日志中心**：结构化日志落库，支持按级别、分类、事件、追踪标识、关键字筛选排障
+  - **数据报表**：按日或区间查看访客打开小窗、会话与消息、人工智能回复与失败率、知识库命中率、转人工等指标
+- **官网与搜索引擎优化（面向获客）**
   - 蓝白主题官网首页，分段渐变与滚动进场动效
-  - `metadata` / Open Graph / JSON-LD / `sitemap.xml` / `robots.txt`，便于搜索引擎收录与社交分享
-- **可选联网搜索（Web Search）**
-  - 支持 **Serper**：MCP 接入（`SERPER_MCP_URL`）或直连 API（`SERPER_API_KEY`）
-  - 也支持“厂商内置 web search”（由模型自己决定是否搜）的 function calling 流程（按模型能力与供应商而定）
+  - **元数据**、开放内容协议、结构化数据格式、站点地图、爬虫协议，便于搜索引擎收录与社交分享
+- **可选联网搜索**
+  - 支持网络内容提取工具：模型上下文协议接入或直连应用程序接口
+  - 也支持“厂商内置联网搜索”（由模型自己决定是否搜索）的函数调用流程（按模型能力与供应商而定）
 
-## 快速开始（只维护根目录 `/.env`）
+## 快速开始（只维护根目录环境变量文件）
 
-> 统一配置真源：**只维护项目根目录 `/.env`**。Docker 与本地启动都读这一份。  
-> 初始化：复制 `/.env.example` 为 `/.env` 并填写必填项。
+> 统一配置真源：**只维护项目根目录环境变量文件 `.env`**。容器化运行与本地启动都读这一份。  
+> 初始化：复制模板文件 `.env.example` 为 `.env` 并填写必填项。
 
 ### 方式 A：预构建镜像部署（推荐，最省事）
 
 #### 1）准备配置
 
 ```bash
+# 从代码托管平台克隆
 git clone https://github.com/yndxw/workbuddy-ai.git
-cd WorkBuddy AI
+cd workbuddy-ai
 cp .env.example .env
 ```
 
 至少要改（必填）：
-- **数据库**：`MYSQL_ROOT_PASSWORD`、`DB_PASSWORD`
-- **管理员**：`ADMIN_PASSWORD`
-- **安全密钥**：`ENCRYPTION_KEY`（64 位 hex）
+- **数据库**：数据库超级管理员密码、数据库密码
+- **管理员**：管理员密码
+- **安全密钥**：加密密钥（六十四位十六进制）
 
-生成 `ENCRYPTION_KEY`：
+生成加密密钥：
 
 ```bash
-# Linux/Mac
+# 操作系统终端
 openssl rand -hex 32
-
-# Windows PowerShell
--join ((48..57) + (97..102) | Get-Random -Count 64 | ForEach-Object {[char]$_})
 ```
 
 #### 2）启动
 
 ```bash
+# 使用容器编排工具启动
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
 #### 3）访问
 
-- **官网首页**：[localhost:3000](http://localhost:3000)
-- **访客聊天**：[localhost:3000/chat](http://localhost:3000/chat)
-- **客服登录**：[localhost:3000/agent/login](http://localhost:3000/agent/login)
-  - 用户名：`admin`（或 `.env` 中 `ADMIN_USERNAME`）
-  - 密码：`.env` 中 `ADMIN_PASSWORD`
+- **官网首页**：[本地主机:3000](http://localhost:3000)
+- **访客聊天**：[本地主机:3000/chat](http://localhost:3000/chat)
+- **客服登录**：[本地主机:3000/agent/login](http://localhost:3000/agent/login)
+  - 用户名：`admin`（或环境变量中管理员用户名）
+  - 密码：环境变量中管理员密码
 
 #### 演示站管理员安全策略
 
-- `ADMIN_PASSWORD` 仅在首次创建管理员时生效；数据库里已有管理员后，重启服务不会覆盖其密码。
+- 管理员密码仅在首次创建管理员时生效；数据库里已有管理员后，重启服务不会覆盖其密码。
 - 出于演示环境安全，前端默认**不允许**：
-  - 修改 `admin` 账号密码
-  - 删除任意 `admin` 账号
-- 删除 `agent` 用户时，系统会自动把其名下 AI 配置转移给当前管理员，避免配置丢失或无人维护。
-- 若需维护管理员账号，请直接通过数据库操作（例如重置密码、删除异常管理员）。
+  - 修改管理员账号密码
+  - 删除任意管理员账号
+- 删除客服用户时，系统会自动把其名下人工智能配置转移给当前管理员，避免配置丢失或无人维护。
+- 若需维护管理员账号，请直接通过数据库操作。
 
 #### 端口修改（重要说明）
 
 - 默认端口：前端 `3000`，后端对外 `18080`
-- 修改：在 `.env` 里改 `FRONTEND_PORT` / `BACKEND_PORT`
+- 修改：在环境变量文件中修改前端端口与后端端口配置。
 
-> 说明：预构建镜像在某些静态资源/图片路径场景可能与端口强绑定（历史兼容原因）。如果你需要彻底自定义端口并确保所有资源路径一致，建议用下面的“方式 B 本地构建”。
-
-### 方式 B：Docker 本地构建部署（可自定义）
+### 方式 B：容器化本地构建部署（可自定义）
 
 ```bash
 git clone https://github.com/yndxw/workbuddy-ai.git
-cd WorkBuddy AI
+cd workbuddy-ai
 cp .env.example .env
 docker-compose up -d --build
 ```
 
-### 方式 C：传统部署（本地开发/手动安装）
+### 方式 C：零门槛本地运行（推荐中小学生与初学者）
 
-环境要求：
-- Go 1.24+
-- Node.js 20.9.0+
-- MySQL 8.0+
+我们提供了 **“一键启动脚本”**，它会自动配置环境、安装依赖、**自动创建数据库**并启动服务：
 
 ```bash
+# 1. 克隆并进入目录
 git clone https://github.com/yndxw/workbuddy-ai.git
-cd WorkBuddy AI
-cp .env.example .env
+cd workbuddy-ai
 
-# 1) 后端
-cd backend
-go mod tidy
-go run main.go
-
-# 2) 前端（新开终端）
-cd ../frontend
-npm install
-npm run dev
+# 2. 运行一键启动脚本
+bash start-local.sh
 ```
 
-## 配置字典（根目录 `/.env`）
+> **环境要求**：
+> - 电脑已安装 [编程语言环境 1.24+](https://go.dev) 和 [运行环境 18+](https://nodejs.org)。
+> - 本地数据库 (3306 端口) 已启动。脚本会自动创建项目数据库。
 
-> 下面表格以 `/.env.example` 为准，帮助你快速判断“必填/可选/什么时候需要填”。
+### 方式 D：传统手动部署（参考开发者模式）
+
+## 配置字典（根目录环境变量文件）
+
+> 下面表格以模板文件为准，帮助您快速判断“必填、可选以及什么时候需要填”。
 
 | 变量 | 用途 | 是否必填 | 默认值（示例） | 示例 |
 |---|---|---|---|---|
-| `APP_PROFILE` | 部署画像（`docker/local`） | 否 | `docker` | `local` |
+| `APP_PROFILE` | 部署画像（容器/本地） | 否 | 容器 | 本地 |
 | `SERVER_HOST` | 后端监听地址 | 是 | `0.0.0.0` | `127.0.0.1` |
-| `SERVER_PORT` | 后端容器内端口 | 是 | `8080` | `8080` |
-| `GIN_MODE` | 后端模式 | 建议 | `release` | `debug` |
-| `SYSTEM_LOG_MIN_LEVEL` | 结构化日志最低落库级别（`system_logs`） | 否 | `info` | `warn` 可减少成功类写入；`none` 关闭落库；**客服端「日志中心」可改并持久化，覆盖本项直至恢复** |
-| `DB_HOST` | 后端数据库地址 | 是 | `mysql` | `localhost` |
+| `SERVER_PORT` | 后端容器内端口 | 是 | `18080` | `18080` |
+| `GIN_MODE` | 后端运行模式 | 建议 | 发布模式 | 调试模式 |
+| `SYSTEM_LOG_MIN_LEVEL` | 结构化日志最低落库级别 | 否 | 信息 | 警告 |
+| `DB_HOST` | 后端数据库地址 | 是 | 容器数据库服务 | 本地主机 |
 | `DB_PORT` | 后端数据库端口 | 是 | `3306` | `3306` |
-| `DB_USER` | 数据库用户名 | 是 | `workbuddy_ai_user` | `root` |
-| `DB_PASSWORD` | 数据库密码 | 是 | 无 | `StrongPwd` |
-| `DB_NAME` | 数据库名 | 是 | `workbuddy_ai` | `workbuddy_ai` |
-| `MYSQL_ROOT_PASSWORD` | MySQL root 密码（compose） | 是（Docker） | 无 | `RootPwd` |
-| `MYSQL_PORT` | MySQL 对外端口（compose） | 否 | `3306` | `13306` |
+| `DB_USER` | 数据库用户名 | 是 | 默认用户 | 超级管理员 |
+| `DB_PASSWORD` | 数据库密码 | 是 | 无 | 强密码 |
+| `DB_NAME` | 数据库名 | 是 | 项目数据库 | 项目数据库 |
+| `MYSQL_ROOT_PASSWORD` | 数据库超级管理员密码 | 是（容器运行） | 无 | 根密码 |
+| `MYSQL_PORT` | 数据库对外端口 | 否 | `3306` | `13306` |
 | `ADMIN_USERNAME` | 默认管理员用户名 | 否 | `admin` | `admin` |
-| `ADMIN_PASSWORD` | 默认管理员密码 | 是 | 无 | `AdminPwd` |
-| `ENCRYPTION_KEY` | 后端加密密钥（64位 hex） | 是 | 无 | `openssl rand -hex 32` |
-| `REDIS_URL` | Redis 连接串（启用跨实例 WS 广播） | 可选（多实例推荐） | 空 | `redis://:pwd@redis:6379/0` |
-| `REDIS_ADDR` | Redis 地址（与 `REDIS_URL` 二选一） | 可选 | 空 | `redis:6379` |
-| `REDIS_PASSWORD` | Redis 密码（使用 `REDIS_ADDR` 时） | 可选 | 空 | `StrongRedisPwd` |
-| `REDIS_DB` | Redis DB（使用 `REDIS_ADDR` 时） | 可选 | `0` | `0` |
-| `REDIS_WS_CHANNEL` | 分布式 WS 事件频道名 | 可选 | `workbuddy_ai:ws_events` | `workbuddy_ai:ws_events` |
-| `BACKEND_PORT` | 后端映射到宿主机端口 | 否 | `18080` | `28080` |
-| `FRONTEND_PORT` | 前端映射到宿主机端口 | 否 | `3000` | `13000` |
-| `MILVUS_HOST` | 向量库地址 | 可选（启用 RAG） | `milvus-standalone` | `localhost` |
-| `MILVUS_PORT` | 向量库端口 | 可选（启用 RAG） | `19530` | `19530` |
-| `MILVUS_USERNAME` | Milvus 用户名 | 可选 | 空 | `user` |
-| `MILVUS_PASSWORD` | Milvus 密码 | 可选 | 空 | `pass` |
-| `MILVUS_DISABLED` | 禁用向量库（不连接） | 否 | `false` | `true` |
-| `VECTOR_STORE_DISABLED` | 同上（兼容开关） | 否 | `false` | `true` |
-| `MILVUS_REQUIRED` | 强依赖向量库（失败即退出） | 否 | `false` | `true` |
-| `SERPER_MCP_URL` | 联网搜索 MCP 地址 | 可选（启用联网） | 空 | `http://host:3000/sse` |
-| `SERPER_API_KEY` | 联网搜索 API Key | 可选（启用联网） | 空 | `xxxxx` |
-| `NEXT_PUBLIC_SITE_URL` | 站点对外绝对地址（用于 SEO） | 否 | 空（默认 demo 域名） | `https://www.example.com` |
-| `NEXT_PUBLIC_API_BASE_URL` | 前端公开 API 地址 | 建议 | `http://localhost:18080` | `https://api.example.com` |
-| `NEXT_PUBLIC_BACKEND_HOST` | 前端 dev 代理目标 host | 否 | `localhost` | `127.0.0.1` |
-| `NEXT_PUBLIC_BACKEND_PORT` | 前端 dev 代理目标 port | 否 | `18080` | `18080` |
-...
-**最后更新**：2026-05-16（含零门槛本地启动脚本说明）
+| `ADMIN_PASSWORD` | 默认管理员密码 | 是 | 无 | 管理员密码 |
+| `ENCRYPTION_KEY` | 后端加密密钥 | 是 | 无 | 六十四位十六进制字符串 |
+| `NEXT_PUBLIC_SITE_URL` | 站点对外绝对地址 | 否 | 空 | 域名地址 |
+| `NEXT_PUBLIC_API_BASE_URL` | 前端公开应用程序接口地址 | 建议 | `http://localhost:18080` | 生产接口地址 |
+| `NEXT_PUBLIC_BACKEND_HOST` | 前端开发代理目标主机 | 否 | 本地主机 | `127.0.0.1` |
+| `NEXT_PUBLIC_BACKEND_PORT` | 前端开发代理目标端口 | 否 | `18080` | `18080` |
 
+**最后更新**：二零二六年五月十六日（含零门槛本地启动脚本说明）

@@ -23,7 +23,7 @@ type BGEEmbeddingService struct {
 // NewBGEEmbeddingService 创建 BGE 嵌入服务实例
 func NewBGEEmbeddingService(apiURL, apiKey, model string) *BGEEmbeddingService {
 	if apiURL == "" {
-		apiURL = "http://localhost:8080"
+		apiURL = "http://localhost:18080"
 	}
 	if model == "" {
 		model = "bge-small-zh-v1.5"

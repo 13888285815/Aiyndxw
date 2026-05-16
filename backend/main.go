@@ -27,8 +27,8 @@ import (
 )
 
 // 初始化默认管理员账号（如果不存在）
-// 用户名从环境变量 ADMIN_USERNAME 读取（默认：admin）
-// 密码从环境变量 ADMIN_PASSWORD 读取（必须设置）
+// 用户名从环境变量中读取（默认值：管理员）
+// 密码从环境变量中读取（必须设置）
 func initDefaultAdmin(userRepo *repository.UserRepository) {
 	// 从环境变量读取管理员用户名和密码
 	adminUsername := os.Getenv("ADMIN_USERNAME")
@@ -38,8 +38,8 @@ func initDefaultAdmin(userRepo *repository.UserRepository) {
 
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
 	if adminPassword == "" {
-		log.Println("⚠️ 警告：未设置 ADMIN_PASSWORD 环境变量，跳过创建默认管理员账号")
-		log.Println("   请在 .env 文件中设置 ADMIN_PASSWORD 后重启服务")
+		log.Println("⚠️ 警告：未设置管理员密码环境变量，跳过创建默认管理员账号")
+		log.Println("   请在环境变量文件中设置密码后重启服务")
 		return
 	}
 
@@ -49,7 +49,7 @@ func initDefaultAdmin(userRepo *repository.UserRepository) {
 		return
 	}
 
-	// 加密密码
+	// 对密码进行加密处理
 	hash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("⚠️ 创建默认管理员失败：密码加密错误 %v", err)
@@ -72,7 +72,7 @@ func initDefaultAdmin(userRepo *repository.UserRepository) {
 	log.Println("   ⚠️ 请首次登录后立即修改密码！")
 }
 
-// logVectorStartup 将向量库（Milvus）启动相关事件写入 system_logs，供前端「日志中心」查询；失败时仅打控制台，不影响启动。
+// 将向量数据库启动相关事件写入系统日志，供前端日志中心查询
 func logVectorStartup(sys *service.SystemLogService, level, event, message string, meta map[string]interface{}) {
 	if sys == nil {
 		return
@@ -88,11 +88,11 @@ func logVectorStartup(sys *service.SystemLogService, level, event, message strin
 		Message:  message,
 		Meta:     meta,
 	}); err != nil {
-		log.Printf("写入 system_logs 失败 (event=%s): %v", event, err)
+		log.Printf("写入系统日志失败 (事件=%s): %v", event, err)
 	}
 }
 
-// fatalVectorStartup 在启动阶段先写入一条 vector error 日志，再执行 fatal 退出。
+// 在启动阶段先写入一条向量错误日志，再执行强制退出
 func fatalVectorStartup(sys *service.SystemLogService, event, message string, meta map[string]interface{}) {
 	logVectorStartup(sys, "error", event, message, meta)
 	log.Fatalf("%s", message)
@@ -100,7 +100,7 @@ func fatalVectorStartup(sys *service.SystemLogService, event, message string, me
 
 func main() {
 
-	// 加载 .env 文件（统一配置真源：优先当前目录 .env，其次上级目录 .env）
+	// 加载环境变量文件（统一配置源：优先当前目录，其次上级目录）
 	wd, _ := os.Getwd()
 	candidates := []string{
 		filepath.Join(wd, ".env"),
@@ -114,22 +114,20 @@ func main() {
 		}
 	}
 	if envPath == "" {
-		log.Printf("⚠️ 未找到 .env 文件（已检查: %v）", candidates)
-		log.Println("将仅使用系统环境变量")
+		log.Printf("⚠️ 未找到环境变量文件（已检查位置: %v）", candidates)
+		log.Println("将仅使用操作系统环境变量")
 	} else {
-		log.Printf("✅ 找到 .env 文件: %s", envPath)
+		log.Printf("✅ 找到环境变量文件: %s", envPath)
 	}
 
-	// 尝试加载 .env 文件
-	// 注意：godotenv 不支持 UTF-8 BOM，如果文件有 BOM 会失败
+	// 尝试加载环境变量
 	if envPath != "" {
 		if err := godotenv.Load(envPath); err != nil {
-			log.Printf("❌ 加载 .env 文件失败: %v", err)
-			log.Println("⚠️ 提示：如果看到 'unexpected character' 错误，可能是文件编码问题（UTF-8 BOM）")
-			log.Println("   解决方法：用文本编辑器（如 VS Code）打开 .env，另存为 UTF-8 编码（不要 BOM）")
-			log.Println("将使用系统环境变量")
+			log.Printf("❌ 加载环境变量文件失败: %v", err)
+			log.Println("⚠️ 提示：如果看到字符错误，可能是文件编码问题")
+			log.Println("将使用操作系统环境变量")
 		} else {
-			log.Println("✅ .env 文件加载成功")
+			log.Println("✅ 环境变量加载成功")
 		}
 	}
 
@@ -138,7 +136,7 @@ func main() {
 		log.Fatalf("数据库连接失败：%v", err)
 	}
 
-	//根据结构体定义自动创建更新表
+	// 根据结构体定义自动创建和更新数据库表
 	if err := db.AutoMigrate(&models.User{}, &models.Conversation{}, &models.Message{}, &models.AIConfig{}, &models.FAQ{}, &models.KnowledgeBase{}, &models.Document{}, &models.EmbeddingConfig{}, &models.PromptConfig{}, &models.WidgetOpenEvent{}, &models.SystemLog{}, &models.AppSetting{}); err != nil {
 		log.Fatalf("自动创建表失败： %v", err)
 	}
@@ -159,45 +157,42 @@ func main() {
 	if row, err := appSettingRepo.Get(models.AppSettingKeySystemLogMinLevel); err == nil && row != nil && strings.TrimSpace(row.Value) != "" {
 		dbRank := service.ParseSystemLogMinPersistLevel(row.Value)
 		systemLogService.SetMinPersistLevelRank(dbRank)
-		log.Printf("ℹ️ 结构化日志最低落库级别: %s（数据库覆盖，环境变量默认 %s）",
+		log.Printf("ℹ️ 结构化日志最低保存级别: %s（数据库配置覆盖，环境默认 %s）",
 			service.SystemLogMinLevelLabel(dbRank), service.SystemLogMinLevelLabel(systemLogMin))
 	} else if systemLogMin == -1 {
-		log.Println("ℹ️ SYSTEM_LOG_MIN_LEVEL=none，已关闭结构化日志写入数据库（日志中心将无新记录）")
+		log.Println("ℹ️ 日志级别设置为关闭，已停止向数据库写入日志记录")
 	} else {
-		log.Printf("ℹ️ 结构化日志最低落库级别: %s（SYSTEM_LOG_MIN_LEVEL）", service.SystemLogMinLevelLabel(systemLogMin))
+		log.Printf("ℹ️ 结构化日志最低保存级别: %s", service.SystemLogMinLevelLabel(systemLogMin))
 	}
 
-	// 初始化默认管理员账号（如果不存在）
+	// 初始化默认管理员账号
 	initDefaultAdmin(userRepo)
 
-	//gin路由初始化
+	// 超文本传输协议框架初始化
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// trace_id + 结构化 HTTP 日志 + 控制台日志
+	// 追踪标识、结构化超文本协议日志以及控制台日志
 	r.Use(middleware.TraceID())
 	r.Use(middleware.StructuredHTTPLogger(systemLogService))
 	r.Use(middleware.Logger())
 
-	//跨域配置
+	// 跨域资源共享配置
 	r.Use(middleware.CORS())
 
-	// 初始化存储服务（本地存储）
-	// 存储目录：backend/uploads（相对于工作目录）
-	// 公共访问路径：/uploads（用于构建URL）
-	// 复用之前获取的工作目录 wd（已在第 56 行声明）
+	// 初始化本地文件存储服务
 	uploadDir := filepath.Join(wd, "uploads")
 	publicPath := "/uploads"
 	storageService := infra.NewLocalStorageService(uploadDir, publicPath)
 
-	// 初始化 Milvus（向量数据库）：默认连接失败时降级为「无向量库」启动；MILVUS_REQUIRED=true 时失败则退出
+	// 初始化向量数据库
 	milvusDisabled := infra.IsMilvusDisabled()
 	milvusRequired := infra.IsMilvusRequired()
 	var milvusClient milvus.Client
 	defer func() {
 		if milvusClient != nil {
 			if err := milvusClient.Close(); err != nil {
-				log.Printf("关闭 Milvus 客户端: %v", err)
+				log.Printf("关闭向量数据库客户端失败: %v", err)
 			}
 		}
 	}()
@@ -211,9 +206,9 @@ func main() {
 	}
 
 	if milvusDisabled {
-		log.Println("ℹ️ 已设置 MILVUS_DISABLED / VECTOR_STORE_DISABLED，跳过 Milvus；知识库 RAG 与向量化不可用，直至启用并重启。")
+		log.Println("ℹ️ 已禁用向量数据库；知识库检索与向量化功能不可用")
 		logVectorStartup(systemLogService, "info", "milvus_disabled",
-			"已跳过 Milvus（MILVUS_DISABLED/VECTOR_STORE_DISABLED）；知识库 RAG 与向量化不可用，启用后需重启",
+			"已禁用向量数据库；知识库检索与向量化功能不可用，启用后需重启",
 			milvusMeta)
 	} else {
 		c, err := infra.NewMilvusClient()
@@ -225,16 +220,16 @@ func main() {
 				}
 				m["error"] = err.Error()
 				fatalVectorStartup(systemLogService, "milvus_required_connect_failed",
-					"连接 Milvus 失败（已设置 MILVUS_REQUIRED）", m)
+					"连接向量数据库失败（已设置为必须连接）", m)
 			}
-			log.Printf("⚠️ 连接 Milvus 失败，将以「无向量库」模式启动: %v", err)
+			log.Printf("⚠️ 连接向量数据库失败，将以无向量库模式启动: %v", err)
 			m := map[string]interface{}{}
 			for k, v := range milvusMeta {
 				m[k] = v
 			}
 			m["error"] = err.Error()
 			logVectorStartup(systemLogService, "warn", "milvus_connect_failed",
-				"连接 Milvus 失败，已降级为无向量库模式启动", m)
+				"连接向量数据库失败，已降级为无向量库模式启动", m)
 		} else {
 			milvusClient = c
 			if err := infra.HealthCheck(milvusClient); err != nil {
@@ -247,42 +242,42 @@ func main() {
 					}
 					m["error"] = err.Error()
 					fatalVectorStartup(systemLogService, "milvus_required_health_check_failed",
-						"Milvus 健康检查失败（已设置 MILVUS_REQUIRED）", m)
+						"向量数据库健康检查失败（已设置为必须通过）", m)
 				}
-				log.Printf("⚠️ Milvus 健康检查失败，将以「无向量库」模式启动: %v", err)
+				log.Printf("⚠️ 向量数据库健康检查失败，将以无向量库模式启动: %v", err)
 				m := map[string]interface{}{}
 				for k, v := range milvusMeta {
 					m[k] = v
 				}
 				m["error"] = err.Error()
 				logVectorStartup(systemLogService, "warn", "milvus_health_check_failed",
-					"Milvus 健康检查失败，已降级为无向量库模式启动", m)
+					"向量数据库健康检查失败，已降级为无向量库模式启动", m)
 			} else {
-				log.Println("✅ Milvus 连接成功")
+				log.Println("✅ 向量数据库连接成功")
 			}
 		}
 	}
 
-	// 嵌入服务按需从 DB 配置获取（保存即生效，无需重启）
+	// 嵌入服务按需从数据库配置获取
 	embeddingConfigService := service.NewEmbeddingConfigService(embeddingConfigRepo, userRepo)
 	promptConfigService := service.NewPromptConfigService(promptConfigRepo, userRepo)
 	embeddingFactory := embedding.NewEmbeddingFactory()
 	embeddingProvider := service.NewConfigBackedEmbeddingProvider(embeddingConfigService, embeddingFactory)
 
-	// 启动时获取一次维度用于创建/校验向量集合
+	// 启动时获取一次维度用于创建或校验向量集合
 	initCtx := context.Background()
 	initSvc, _ := embeddingProvider.Get(initCtx)
 	if initSvc != nil {
-		log.Printf("✅ 嵌入服务按需从「知识库向量配置」加载，模型: %s (维度: %d)，修改配置后立即生效", initSvc.GetModelName(), initSvc.GetDimension())
+		log.Printf("✅ 嵌入服务已从数据库加载，模型: %s (维度: %d)", initSvc.GetModelName(), initSvc.GetDimension())
 	} else {
-		log.Printf("⚠️ 未配置嵌入服务；知识库/RAG 需在「设置 - 知识库向量模型」中配置 API 后再使用")
+		log.Printf("⚠️ 未配置嵌入服务；请在设置中配置后使用")
 	}
 	dimension := 1536
 	if initSvc != nil {
 		dimension = initSvc.GetDimension()
 	}
 
-	// 向量存储：迁移时通过 getEmbedding 从当前配置重新向量化
+	// 向量存储服务初始化
 	getEmbedding := func(ctx context.Context) (infra.EmbeddingService, error) {
 		svc, err := embeddingProvider.Get(ctx)
 		if err != nil || svc == nil {
@@ -302,16 +297,16 @@ func main() {
 				}
 				m["error"] = err.Error()
 				fatalVectorStartup(systemLogService, "milvus_required_vector_store_init_failed",
-					"创建向量存储失败（已设置 MILVUS_REQUIRED）", m)
+					"创建向量存储失败", m)
 			}
-			log.Printf("⚠️ 创建向量存储失败，将以「无向量库」模式启动: %v", err)
+			log.Printf("⚠️ 创建向量存储失败，将以无向量库模式启动: %v", err)
 			m := map[string]interface{}{}
 			for k, v := range milvusMeta {
 				m[k] = v
 			}
 			m["error"] = err.Error()
 			logVectorStartup(systemLogService, "warn", "milvus_vector_store_init_failed",
-				"创建向量存储（集合）失败，已降级为无向量库模式启动", m)
+				"创建向量存储失败，已降级为无向量库模式启动", m)
 		} else {
 			vectorStore = vs
 		}
@@ -323,90 +318,81 @@ func main() {
 		}
 		okMeta["collection"] = "documents"
 		logVectorStartup(systemLogService, "info", "milvus_ready",
-			"Milvus 已连接且向量集合可用", okMeta)
+			"向量数据库已连接且向量集合可用", okMeta)
 	}
 	vectorStoreService := rag.NewVectorStoreService(vectorStore)
 
-	// 文档向量化 / RAG 检索 / 健康检查均使用 provider，配置保存即生效
+	// 文档向量化与检索服务初始化
 	documentEmbeddingService := rag.NewDocumentEmbeddingService(vectorStoreService, embeddingProvider)
 	retrievalService := rag.NewRetrievalService(vectorStoreService, embeddingProvider, docRepo, kbRepo)
 	retrievalService.EnableCache(5 * time.Minute)
 	healthChecker := rag.NewHealthChecker(embeddingProvider, vectorStoreService)
 
-	// 联网搜索（可选）：优先通过 MCP 调用 Serper（SERPER_MCP_URL），否则使用 Serper HTTP API（SERPER_API_KEY）
+	// 联网搜索服务初始化（可选）
 	var webSearchProvider infra_search.WebSearchProvider
 	if mcpURL := os.Getenv("SERPER_MCP_URL"); mcpURL != "" {
 		mcpClient := mcp.NewClient(mcpURL)
 		if err := mcpClient.Connect(initCtx); err != nil {
-			log.Printf("⚠️ Serper MCP 连接失败（SERPER_MCP_URL=%s）: %v，联网搜索将不可用", mcpURL, err)
+			log.Printf("⚠️ 联网搜索工具连接失败: %v", err)
 		} else {
 			webSearchProvider = mcp.NewSerperWebSearchProvider(mcpClient)
-			log.Println("✅ 联网搜索已通过 MCP（Serper）接入")
+			log.Println("✅ 联网搜索已接入")
 		}
 	}
 	if webSearchProvider == nil {
 		if apiKey := os.Getenv("SERPER_API_KEY"); apiKey != "" {
 			webSearchProvider = infra_search.NewSerperProvider(apiKey)
-			log.Println("✅ 联网搜索已通过 Serper HTTP API 接入")
+			log.Println("✅ 联网搜索已通过接口接入")
 		}
 	}
 
-	// 初始化服务层
+	// 初始化核心服务层
 	authService := service.NewAuthService(userRepo)
 	conversationService := service.NewConversationService(conversationRepo, messageRepo, aiConfigRepo, userRepo, systemLogService)
 	profileService := service.NewProfileService(userRepo, storageService)
 	aiConfigService := service.NewAIConfigService(aiConfigRepo, userRepo)
 	aiService := service.NewAIService(aiConfigRepo, messageRepo, conversationRepo, retrievalService, webSearchProvider, embeddingConfigService, promptConfigService, storageService, systemLogService)
-	userService := service.NewUserService(userRepo, aiConfigRepo)                                              // 用户管理服务
-	faqService := service.NewFAQService(faqRepo, retrievalService, documentEmbeddingService)                   // FAQ 管理服务
-	documentService := service.NewDocumentService(docRepo, kbRepo, documentEmbeddingService, retrievalService) // 文档管理服务
-	knowledgeBaseService := service.NewKnowledgeBaseService(kbRepo, docRepo)                                   // 知识库管理服务
-	importService := service.NewImportService(docRepo, kbRepo, documentService, documentEmbeddingService)      // 导入服务
+	userService := service.NewUserService(userRepo, aiConfigRepo)
+	faqService := service.NewFAQService(faqRepo, retrievalService, documentEmbeddingService)
+	documentService := service.NewDocumentService(docRepo, kbRepo, documentEmbeddingService, retrievalService)
+	knowledgeBaseService := service.NewKnowledgeBaseService(kbRepo, docRepo)
+	importService := service.NewImportService(docRepo, kbRepo, documentService, documentEmbeddingService)
 
-	// 声明 Hub 变量（用于在回调函数中访问）
+	// 声明网络套接字中心变量
 	var wsHub *websocket.Hub
 
-	// 创建 WebSocket Hub，设置回调函数来处理客户端连接/断开事件
-	// 使用闭包来访问 conversationService、messageService、userRepo 和 wsHub
+	// 处理客户端连接与断开事件的回调逻辑
 	onConnect := func(conversationID uint, isVisitor bool, visitorCount int, agentID uint) {
 		if isVisitor {
 			if err := conversationService.UpdateVisitorOnlineStatus(conversationID, true); err != nil {
 				log.Printf("更新访客在线状态失败: %v", err)
 				return
 			}
-			// 广播状态更新到所有客服端（不管连接到哪个对话）
+			// 广播状态更新到所有客服端
 			wsHub.BroadcastToAllAgents("visitor_status_update", map[string]interface{}{
 				"conversation_id": conversationID,
 				"is_online":       true,
 				"visitor_count":   visitorCount,
 			})
 		} else if agentID > 0 {
-			// 客服连接：创建系统消息 "{客服名}加入了会话"
-			// 但需要检查是否已经存在该客服的加入消息，避免重复创建
-			// 获取客服信息
+			// 客服加入会话处理
 			agent, err := userRepo.GetByID(agentID)
 			if err != nil {
 				log.Printf("获取客服信息失败: %v", err)
 				return
 			}
-			// 确定显示名称：优先使用昵称，如果没有则使用用户名
 			agentName := agent.Nickname
 			if agentName == "" {
 				agentName = agent.Username
 			}
-			// 检查是否已经存在该客服的加入消息
 			hasJoinMessage, err := messageRepo.HasAgentJoinMessage(conversationID, agentID, agentName)
 			if err != nil {
 				log.Printf("检查客服加入消息失败: %v", err)
 				return
 			}
-			// 如果已经存在加入消息，不再创建
 			if hasJoinMessage {
-				log.Printf("客服 %s 已经加入过对话 %d，跳过创建系统消息", agentName, conversationID)
 				return
 			}
-			// 创建系统消息
-			// 需要获取对话信息以确定当前模式
 			conv, err := conversationRepo.GetByID(conversationID)
 			if err != nil {
 				log.Printf("获取对话信息失败: %v", err)
@@ -415,7 +401,7 @@ func main() {
 			now := time.Now()
 			chatMode := conv.ChatMode
 			if chatMode == "" {
-				chatMode = "human" // 默认人工模式
+				chatMode = "human"
 			}
 			systemMessage := &models.Message{
 				ConversationID: conversationID,
@@ -423,20 +409,17 @@ func main() {
 				SenderIsAgent:  true,
 				Content:        agentName + "加入了会话",
 				MessageType:    "system_message",
-				ChatMode:       chatMode, // 记录系统消息发送时的对话模式
-				IsRead:         true,     // 系统消息默认已读
+				ChatMode:       chatMode,
+				IsRead:         true,
 				ReadAt:         &now,
 			}
 			if err := messageRepo.Create(systemMessage); err != nil {
-				log.Printf("创建客服加入系统消息失败: %v", err)
+				log.Printf("创建系统消息失败: %v", err)
 				return
 			}
-			// 延迟一小段时间后广播系统消息，确保客服的 WebSocket 连接已经完全建立
-			// 这样可以确保系统消息能够被客服接收到
 			go func() {
 				time.Sleep(100 * time.Millisecond)
 				wsHub.BroadcastMessage(conversationID, "new_message", systemMessage)
-				log.Printf("✅ 客服加入系统消息已创建并广播: 对话ID=%d, 客服=%s", conversationID, agentName)
 			}()
 		}
 	}
@@ -448,14 +431,12 @@ func main() {
 					log.Printf("更新访客离线状态失败: %v", err)
 					return
 				}
-				// 广播状态更新到所有客服端（不管连接到哪个对话）
 				wsHub.BroadcastToAllAgents("visitor_status_update", map[string]interface{}{
 					"conversation_id": conversationID,
 					"is_online":       false,
 					"visitor_count":   0,
 				})
 			} else {
-				// 还有访客在线，只更新最后活跃时间
 				if err := conversationService.UpdateLastSeenAt(conversationID); err != nil {
 					log.Printf("更新最后活跃时间失败: %v", err)
 					return
@@ -464,22 +445,21 @@ func main() {
 		}
 	}
 
-	// 创建 Hub（回调函数通过闭包访问 wsHub）
-	// 可选启用 Redis Pub/Sub：配置 REDIS_URL 或 REDIS_ADDR 后自动开启跨实例广播。
+	// 创建网络套接字分发中心
 	wsBus, wsBusErr := websocket.NewRedisBusFromEnv()
 	if wsBusErr != nil {
-		log.Printf("⚠️ Redis Pub/Sub 初始化失败，将回退为单实例广播: %v", wsBusErr)
+		log.Printf("⚠️ 分布式消息总线初始化失败: %v", wsBusErr)
 	}
 	if wsBus != nil {
 		defer func() {
 			if err := wsBus.Close(); err != nil {
-				log.Printf("关闭 Redis Pub/Sub 失败: %v", err)
+				log.Printf("关闭消息总线失败: %v", err)
 			}
 		}()
-		log.Println("✅ 已启用 Redis Pub/Sub 跨实例广播")
+		log.Println("✅ 已启用分布式消息广播")
 	}
 	wsHub = websocket.NewHub(onConnect, onDisconnect, wsBus)
-	go wsHub.Run() // 启动 Hub（在后台运行）
+	go wsHub.Run()
 
 	messageService := service.NewMessageService(db, conversationRepo, messageRepo, wsHub, aiService)
 	visitorService := service.NewVisitorService(userRepo, wsHub)
@@ -496,9 +476,9 @@ func main() {
 	embeddingConfigController := controller.NewEmbeddingConfigController(embeddingConfigService, userService)
 	promptConfigController := controller.NewPromptConfigController(promptConfigService, userService)
 	knowledgeBaseController := controller.NewKnowledgeBaseController(knowledgeBaseService, embeddingConfigService, userService)
-	importController := controller.NewImportController(importService, embeddingConfigService, userService) // 导入控制器
+	importController := controller.NewImportController(importService, embeddingConfigService, userService)
 	visitorController := controller.NewVisitorController(visitorService, embeddingConfigService)
-	healthController := controller.NewHealthController(healthChecker, retrievalService) // 健康检查控制器
+	healthController := controller.NewHealthController(healthChecker, retrievalService)
 
 	widgetOpenRepo := repository.NewWidgetOpenRepository(db)
 	analyticsService := service.NewAnalyticsService(db, widgetOpenRepo)
@@ -519,33 +499,27 @@ func main() {
 			FAQ:             faqController,
 			Document:        documentController,
 			KnowledgeBase:   knowledgeBaseController,
-			Import:          importController, // 导入控制器
+			Import:          importController,
 			Visitor:         visitorController,
-			Health:          healthController, // 健康检查控制器
+			Health:          healthController,
 			Analytics:       analyticsController,
 			SystemLog:       systemLogController,
 		},
 		websocket.HandleWebSocket(wsHub, userRepo),
 	)
 
-	// 配置静态文件服务（用于访问上传的头像等文件）
-	// 静态文件路径：/uploads -> backend/uploads
 	r.Static("/uploads", uploadDir)
 
-	//启动服务器
-	// 监听所有网络接口（0.0.0.0），允许外部设备访问
-	// 如果只想本地访问，可以改为 "127.0.0.1:8080" 或 ":8080"
+	// 启动服务器并监听指定网络接口与端口
 	host := os.Getenv("SERVER_HOST")
 	if host == "" {
-		host = "0.0.0.0" // 默认监听所有网络接口，允许外部访问
+		host = "0.0.0.0"
 	}
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
-		port = "8080"
+		port = "18080"
 	}
 	addr := host + ":" + port
-	log.Println("🚀 服务器启动成功，监听 " + addr)
-	log.Println("📡 WebSocket 服务已启动，路径: /ws?conversation_id=<对话ID>")
-	log.Println("💡 提示：如需限制为仅本地访问，请设置环境变量 SERVER_HOST=127.0.0.1")
+	log.Println("🚀 服务器启动成功，监听地址: " + addr)
 	r.Run(addr)
 }

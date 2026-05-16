@@ -18,9 +18,17 @@ func NewDB() (*gorm.DB, error) {
 	password := os.Getenv("DB_PASSWORD")
 	name := os.Getenv("DB_NAME")
 
-	// 最小校验，避免使用硬编码默认值
 	if host == "" || port == "" || user == "" || name == "" {
 		return nil, fmt.Errorf("database env not set: require DB_HOST, DB_PORT, DB_USER, DB_NAME")
+	}
+
+	// 尝试自动创建数据库（面向中小学生与零维护场景优化）
+	dsnWithoutDB := fmt.Sprintf("%s:%s@tcp(%s:%s)/?parseTime=true&charset=utf8mb4&loc=Local", user, password, host, port)
+	dbRaw, err := gorm.Open(mysql.Open(dsnWithoutDB), &gorm.Config{})
+	if err == nil {
+		// 检查并创建数据库
+		createDBSQL := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", name)
+		_ = dbRaw.Exec(createDBSQL)
 	}
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4&loc=Local", user, password, host, port, name)

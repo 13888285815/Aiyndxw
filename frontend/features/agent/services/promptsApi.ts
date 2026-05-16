@@ -24,7 +24,7 @@ export async function fetchPrompts(userId: number): Promise<PromptItem[]> {
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
     throw new Error(
-      "提示词接口返回非 JSON，请确认：1) 后端已启动；2) 前端代理端口与后端一致（默认 8080，若后端在 18080 请在 frontend/.env.local 设置 NEXT_PUBLIC_BACKEND_PORT=18080 并重启前端）"
+      "提示词接口返回非 JSON，请确认：1) 后端已启动；2) 前端代理端口与后端一致（默认 18080，若后端在 18080 请在 frontend/.env.local 设置 NEXT_PUBLIC_BACKEND_PORT=18080 并重启前端）"
     );
   }
   const data: PromptsResponse = await res.json();

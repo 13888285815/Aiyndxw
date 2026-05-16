@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_HOST = process.env.NEXT_PUBLIC_BACKEND_HOST || "localhost";
-const BACKEND_PORT = process.env.NEXT_PUBLIC_BACKEND_PORT || "8080";
+const BACKEND_PORT = process.env.NEXT_PUBLIC_BACKEND_PORT || "18080";
 const BACKEND_BASE = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
 
 /** 开发环境：将 /api/agent/prompts 代理到后端，避免 rewrites 在 Turbopack 下不稳定 */
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     return NextResponse.json(
-      { error: "无法连接后端，请确认后端已启动且端口一致（默认 8080）" },
+      { error: "无法连接后端，请确认后端已启动且端口一致（默认 18080）" },
       { status: 502 }
     );
   }
@@ -47,7 +47,7 @@ export async function PUT(request: NextRequest) {
     });
   } catch (e) {
     return NextResponse.json(
-      { error: "无法连接后端，请确认后端已启动且端口一致（默认 8080）" },
+      { error: "无法连接后端，请确认后端已启动且端口一致（默认 18080）" },
       { status: 502 }
     );
   }

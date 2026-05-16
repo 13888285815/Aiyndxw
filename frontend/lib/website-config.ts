@@ -4,10 +4,10 @@
  */
 
 export const websiteConfig = {
-  /** 在线演示站点（「立即体验 / 打开 Demo」等入口） */
+  /** 在线演示站点（「立即体验 / 打开 演示」等入口） */
   demoUrl: "https://tools.yndxw.com",
 
-  // GitHub 仓库地址
+  // 代码托管平台仓库地址
   github: {
     repo: "https://github.com/yndxw/workbuddy-ai",
     releases: "https://github.com/yndxw/workbuddy-ai/releases",
@@ -17,7 +17,7 @@ export const websiteConfig = {
   
   // 联系方式
   contact: {
-    email: "zzx@yndxw.com", // 可选：邮箱地址
+    email: "zzx@yndxw.com", // 可选：电子邮箱地址
     wechat: "", // 可选：微信号或微信群链接
   },
   
@@ -29,8 +29,7 @@ export const websiteConfig = {
   
   // 其他配置
   copyright: {
-    company: "WorkBuddy AI 智能客服系统", // 公司/产品名称
+    company: "WorkBuddy AI 智能客服系统", // 公司或产品名称
     year: new Date().getFullYear(),
   },
 };
-

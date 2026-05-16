@@ -46,7 +46,7 @@ ENV TZ=Asia/Shanghai
 RUN mkdir -p uploads/avatars uploads/messages
 
 # 暴露端口
-EXPOSE 8080
+EXPOSE 18080
 
 # 启动应用
 CMD ["./backend"]
