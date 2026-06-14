@@ -19,6 +19,7 @@ import (
 	"github.com/yndxw/workbuddy-ai/backend/service"
 	"github.com/yndxw/workbuddy-ai/backend/service/embedding"
 	"github.com/yndxw/workbuddy-ai/backend/service/rag"
+	"github.com/yndxw/workbuddy-ai/backend/utils"
 	"github.com/yndxw/workbuddy-ai/backend/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -70,6 +71,90 @@ func initDefaultAdmin(userRepo *repository.UserRepository) {
 	log.Printf("✅ 默认管理员账号创建成功")
 	log.Printf("   用户名: %s", adminUsername)
 	log.Println("   ⚠️ 请首次登录后立即修改密码！")
+}
+
+// initDefaultAIConfigs 初始化默认 AI 配置（如果不存在）
+func initDefaultAIConfigs(aiConfigRepo *repository.AIConfigRepository, userRepo *repository.UserRepository) {
+	// 获取管理员用户
+	admin, err := userRepo.FindByUsername(os.Getenv("ADMIN_USERNAME"))
+	if err != nil || admin == nil {
+		log.Println("⚠️ 未找到管理员用户，跳过初始化默认 AI 配置")
+		return
+	}
+
+	// 检查是否已存在配置
+	configs, err := aiConfigRepo.ListByUserID(admin.ID)
+	if err != nil {
+		log.Printf("⚠️ 查询 AI 配置失败: %v", err)
+		return
+	}
+	if len(configs) > 0 {
+		log.Println("✅ AI 配置已存在，跳过初始化")
+		return
+	}
+
+	// 默认 AI 配置列表
+	defaultConfigs := []*models.AIConfig{
+		{
+			UserID:      admin.ID,
+			Provider:    "ollama",
+			APIURL:      "http://localhost:11434/v1/chat/completions",
+			APIKey:      "ollama",
+			Model:       "hermes3",
+			ModelType:   "text",
+			IsActive:    true,
+			IsPublic:    true,
+			Description: "Hermes-4 Pro - 高性能开源大语言模型",
+		},
+		{
+			UserID:      admin.ID,
+			Provider:    "custom",
+			APIURL:      "https://api.deepseek.com/v1/chat/completions",
+			APIKey:      os.Getenv("DEEPSEEK_API_KEY"),
+			Model:       "deepseek-chat",
+			ModelType:   "text",
+			IsActive:    os.Getenv("DEEPSEEK_API_KEY") != "",
+			IsPublic:    true,
+			Description: "DeepSeek Chat - DeepSeek 对话模型",
+		},
+		{
+			UserID:      admin.ID,
+			Provider:    "custom",
+			APIURL:      "https://api.openai.com/v1/chat/completions",
+			APIKey:      "your-api-key-here",
+			Model:       "gpt-4o",
+			ModelType:   "text",
+			IsActive:    false,
+			IsPublic:    false,
+			Description: "OpenAI GPT-4o（需配置 API Key）",
+		},
+		{
+			UserID:      admin.ID,
+			Provider:    "custom",
+			APIURL:      "https://api.anthropic.com/v1/messages",
+			APIKey:      "your-api-key-here",
+			Model:       "claude-3-5-sonnet-20240620",
+			ModelType:   "text",
+			IsActive:    false,
+			IsPublic:    false,
+			Description: "Claude 3.5 Sonnet（需配置 API Key）",
+		},
+	}
+
+	// 加密 API Key 并创建配置
+	for _, config := range defaultConfigs {
+		encryptedKey, err := utils.EncryptAPIKey(config.APIKey)
+		if err != nil {
+			log.Printf("⚠️ 加密 API Key 失败: %v", err)
+			continue
+		}
+		config.APIKey = encryptedKey
+		if err := aiConfigRepo.Create(config); err != nil {
+			log.Printf("⚠️ 创建默认 AI 配置失败: %v", err)
+		}
+	}
+
+	log.Println("✅ 默认 AI 配置初始化成功")
 }
 
 // 将向量数据库启动相关事件写入系统日志，供前端日志中心查询
@@ -167,6 +252,9 @@ func main() {
 
 	// 初始化默认管理员账号
 	initDefaultAdmin(userRepo)
+
+	// 初始化默认 AI 配置（包含 Hermes-4 Pro 模型）
+	initDefaultAIConfigs(aiConfigRepo, userRepo)
 
 	// 超文本传输协议框架初始化
 	gin.SetMode(gin.ReleaseMode)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import TaskPanel from './components/TaskPanel';
 import FileManager from './components/FileManager';
@@ -7,6 +7,8 @@ import SystemUpdate from './components/SystemUpdate';
 import AgentPanel from './components/AgentPanel';
 import SkillCenter from './components/SkillCenter';
 import SystemSettings from './components/SystemSettings';
+import MemoryPanel from './components/MemoryPanel';
+import { sendMessage } from './services/api';
 
 export interface Message {
   id: string;
@@ -48,495 +50,119 @@ export interface Agent {
 export interface Model {
   id: string;
   name: string;
-  provider: string;
   type: 'local' | 'cloud';
-  status: 'available' | 'loading' | 'unavailable';
-  contextWindow: number;
-  capabilities: string[];
+  status: 'active' | 'inactive';
 }
 
-const AGENTS: Agent[] = [
-  { id: 'jarvis', name: 'JARVIS', role: '基础设施守护者', status: 'online', description: '监控系统健康、管理工作空间、自动化运维' },
-  { id: 'hermes', name: 'HERMES', role: '邮件管道', status: 'online', description: '智能分类邮件、生成日报摘要、邮件自动回复' },
-  { id: 'chronos', name: '时间架构师', status: 'online', role: '时间架构师', description: '管理日程、生成简报、协调提醒' },
-  { id: 'ledger', name: 'LEDGER', role: '财务管家', status: 'busy', description: '处理发票、跟踪支出、生成财务报告' },
-  { id: 'cyrano', name: 'CYRANO', role: '文案助手', status: 'online', description: '撰写邮件、生成文档、优化内容' },
-  { id: 'mythos', name: 'MYTHOS', role: '深度推理专家', status: 'online', description: '基于OpenMythos架构，处理复杂推理任务' },
-];
-
-const MODELS: Model[] = [
-  { id: 'hermes-4-pro', name: 'Hermes-4 Pro', provider: 'Nous Research', type: 'local', status: 'available', contextWindow: 128000, capabilities: ['代码生成', '复杂推理', '多模态'] },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', type: 'cloud', status: 'available', contextWindow: 128000, capabilities: ['通用任务', '代码', '图像理解'] },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', type: 'cloud', status: 'available', contextWindow: 200000, capabilities: ['长上下文', '分析任务', '代码'] },
-  { id: 'llama-3-3-70b', name: 'Llama 3.3 70B', provider: 'Meta', type: 'local', status: 'available', contextWindow: 128000, capabilities: ['本地运行', '隐私保护', '通用任务'] },
-  { id: 'mistral-large-2', name: 'Mistral Large 2', provider: 'Mistral', type: 'cloud', status: 'available', contextWindow: 128000, capabilities: ['快速响应', '代码', '推理'] },
-];
-
-const TOOLS = [
-  { name: 'web_search', description: '网络搜索', icon: '🔍' },
-  { name: 'file_read', description: '读取文件', icon: '📄' },
-  { name: 'file_write', description: '写入文件', icon: '✏️' },
-  { name: 'terminal', description: '执行命令', icon: '💻' },
-  { name: 'schedule', description: '日程管理', icon: '📅' },
-  { name: 'email', description: '邮件发送', icon: '📧' },
-];
-
-const COMMANDS: Record<string, {
-  category: string;
-  description: string;
-  execute: (args: string[]) => { response: string; steps: ThinkingStep[]; toolCall?: ToolCall };
-}> = {
+const COMMANDS: Record<string, { description: string; execute: (args: string[]) => { response: string; steps: ThinkingStep[]; toolCall?: ToolCall } }> = {
   '/help': {
-    category: '系统管理',
-    description: '显示所有可用指令',
+    description: '显示帮助信息',
     execute: () => ({
-      response: `## 📖 指令帮助
-
-### 系统管理
-- \`/help\` - 显示指令帮助
-- \`/status\` - 查看系统状态
-- \`/clear\` - 清空对话记录
-
-### 智能体管理
-- \`/agent list\` - 列出所有智能体
-- \`/agent start <名称>\` - 启动智能体
-- \`/agent stop <名称>\` - 停止智能体
-
-### 模型管理
-- \`/model list\` - 列出可用模型
-- \`/model select <名称>\` - 选择模型
-- \`/model auto\` - 启用智能模型路由
-
-### 技能管理
-- \`/skill list\` - 列出自动技能
-- \`/skill train\` - 训练新技能
-
-### 记忆管理
-- \`/memory list\` - 查看记忆内容
-- \`/memory clear [类型]\` - 清空记忆
-
-### 应用操作
-- \`/open <应用>\` - 打开应用程序
-- \`/search <关键词>\` - 浏览器搜索
-- \`/navigate <网址>\` - 导航到网址
-
-### 配置
-- \`/config theme <dark/light>\` - 设置主题`,
-      steps: [{ step: '指令识别', content: '用户请求帮助信息' }, { step: '操作执行', content: '生成指令帮助文档' }],
+      response: `📋 可用指令：\n\n/time - 显示当前时间\n/clear - 清空对话\n/status - 查看系统状态\n/config theme [dark/light] - 切换主题\n/open [app] - 打开应用\n/search [query] - 搜索内容\n/model list - 列出可用模型\n/agent list - 列出智能体\n/skill list - 列出技能\n/version - 显示版本信息`,
+      steps: [{ step: '1', content: '解析指令：/help', completed: true }, { step: '2', content: '检索可用指令列表', completed: true }, { step: '3', content: '格式化帮助信息', completed: true }],
     }),
   },
-  '/status': {
-    category: '系统管理',
-    description: '显示系统状态',
+  '/time': {
+    description: '显示当前时间',
     execute: () => ({
-      response: `## 📊 系统状态
-
-**连接状态**：✅ 已连接
-**模型类型**：🖥️ 本地模型运行中 (Hermes-4 Pro)
-**配额使用**：📈 85%
-**定时任务**：⏰ 5个待执行
-
-### 🤖 智能体状态
-| 智能体 | 状态 | 角色 |
-|--------|------|------|
-| JARVIS | 🟢 在线 | 基础设施守护者 |
-| HERMES | 🟢 在线 | 邮件管道 |
-| CHRONOS | 🟢 在线 | 时间架构师 |
-| LEDGER | 🟡 忙碌 | 财务管家 |
-| CYRANO | 🟢 在线 | 文案助手 |
-| MYTHOS | 🟢 在线 | 深度推理专家 |
-
-### 🧠 自动技能
-已生成：3个
-- 每日邮件分类规则
-- 会议纪要生成
-- 周报自动生成`,
-      steps: [
-        { step: '状态查询', content: '获取系统连接状态' },
-        { step: '模型检查', content: '验证本地模型运行状态' },
-        { step: '智能体检索', content: '检查各智能体运行状态' },
-        { step: '任务检查', content: '扫描待执行定时任务' },
-        { step: '技能统计', content: '统计自动生成技能数量' },
-      ],
+      response: `⏰ 当前时间：${new Date().toLocaleString('zh-CN')}`,
+      steps: [{ step: '1', content: '获取系统时间', completed: true }, { step: '2', content: '格式化时间显示', completed: true }],
     }),
   },
   '/clear': {
-    category: '系统管理',
-    description: '清空对话记录',
+    description: '清空对话',
     execute: () => ({
-      response: '✅ 对话已清空',
-      steps: [{ step: '确认操作', content: '用户请求清空对话' }, { step: '执行清空', content: '清除所有对话记录' }, { step: '状态更新', content: '重置对话状态' }],
+      response: '对话已清空',
+      steps: [{ step: '1', content: '清除消息列表', completed: true }, { step: '2', content: '重置对话状态', completed: true }],
+    }),
+  },
+  '/status': {
+    description: '查看系统状态',
+    execute: () => ({
+      response: `📊 系统状态：\n\n- 连接状态：✅ 在线\n- 当前模型：Hermes-4 Pro\n- 智能体数量：5\n- 技能数量：8\n- 任务数量：15\n- 配额：98%`,
+      steps: [{ step: '1', content: '检查连接状态', completed: true }, { step: '2', content: '获取模型信息', completed: true }, { step: '3', content: '统计系统资源', completed: true }],
+    }),
+  },
+  '/version': {
+    description: '显示版本信息',
+    execute: () => ({
+      response: `📦 意念AI v1.0.0\n\n- 构建日期：${new Date().toLocaleDateString('zh-CN')}\n- 框架：React + TypeScript\n- 样式：Tailwind CSS 3\n- 构建工具：Vite`,
+      steps: [{ step: '1', content: '获取版本信息', completed: true }, { step: '2', content: '显示系统配置', completed: true }],
     }),
   },
   '/agent': {
-    category: '智能体管理',
-    description: '管理智能体',
+    description: '智能体管理',
     execute: (args) => {
-      const action = args[0]?.toLowerCase();
-      if (!action) {
+      if (args[0] === 'list') {
         return {
-          response: '❌ 参数错误：请指定操作，如 /agent list',
-          steps: [{ step: '指令识别', content: '检测到指令: /agent' }, { step: '参数验证', content: '缺少操作参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      if (action === 'list') {
-        return {
-          response: `## 🤖 智能体列表
-
-${AGENTS.map(a => `### ${a.name}
-**角色**：${a.role}
-**状态**：${a.status === 'online' ? '🟢 在线' : a.status === 'busy' ? '🟡 忙碌' : '🔴 离线'}
-**描述**：${a.description}`).join('\n\n')}`,
-          steps: [{ step: '指令识别', content: '检测到指令: /agent list' }, { step: '智能体检索', content: '从智能体注册表获取列表' }, { step: '状态聚合', content: '收集各智能体运行状态' }, { step: '响应生成', content: '格式化显示智能体信息' }],
-        };
-      }
-      if (action === 'start') {
-        const agentName = args[1]?.toUpperCase();
-        const agent = AGENTS.find(a => a.name === agentName);
-        if (!agentName) {
-          return {
-            response: '❌ 参数错误：请指定智能体名称，如 /agent start JARVIS',
-            steps: [{ step: '指令识别', content: '检测到指令: /agent start' }, { step: '参数验证', content: '缺少智能体名称' }, { step: '错误处理', content: '返回参数缺失错误' }],
-          };
-        }
-        if (!agent) {
-          return {
-            response: `❌ 未找到智能体: ${agentName}。可用智能体: ${AGENTS.map(a => a.name).join(', ')}`,
-            steps: [{ step: '指令识别', content: `检测到指令: /agent start ${agentName}` }, { step: '智能体检索', content: `未找到智能体 "${agentName}"` }, { step: '错误处理', content: '返回智能体不存在错误' }],
-          };
-        }
-        return {
-          response: `✅ 智能体 ${agentName} 已启动`,
-          steps: [{ step: '指令识别', content: `检测到指令: /agent start ${agentName}` }, { step: '智能体启动', content: `启动智能体 ${agentName}` }, { step: '状态更新', content: `更新 ${agentName} 状态为在线` }],
-        };
-      }
-      if (action === 'stop') {
-        const agentName = args[1]?.toUpperCase();
-        const agent = AGENTS.find(a => a.name === agentName);
-        if (!agentName) {
-          return {
-            response: '❌ 参数错误：请指定智能体名称，如 /agent stop JARVIS',
-            steps: [{ step: '指令识别', content: '检测到指令: /agent stop' }, { step: '参数验证', content: '缺少智能体名称' }, { step: '错误处理', content: '返回参数缺失错误' }],
-          };
-        }
-        if (!agent) {
-          return {
-            response: `❌ 未找到智能体: ${agentName}。可用智能体: ${AGENTS.map(a => a.name).join(', ')}`,
-            steps: [{ step: '指令识别', content: `检测到指令: /agent stop ${agentName}` }, { step: '智能体检索', content: `未找到智能体 "${agentName}"` }, { step: '错误处理', content: '返回智能体不存在错误' }],
-          };
-        }
-        return {
-          response: `✅ 智能体 ${agentName} 已停止`,
-          steps: [{ step: '指令识别', content: `检测到指令: /agent stop ${agentName}` }, { step: '智能体停止', content: `停止智能体 ${agentName}` }, { step: '状态更新', content: `更新 ${agentName} 状态为离线` }],
+          response: `🤖 可用智能体：\n\n1. **JARVIS** - 基础设施守护者\n   状态：🟢 在线\n   职责：系统健康监控、Docker服务管理、工作空间版本控制\n\n2. **HERMES** - 邮件管道\n   状态：🟢 在线\n   职责：IMAP邮箱读取、智能邮件分类、每日简报生成\n\n3. **CHRONOS** - 时间架构师\n   状态：🟢 在线\n   职责：日程读取与更新、晨间简报生成、会议冲突检测\n\n4. **LEDGER** - 财务管家\n   状态：🟡 忙碌\n   职责：发票处理、支出跟踪、财务报告生成\n\n5. **CYRANO** - 文案助手\n   状态：🟢 在线\n   职责：邮件撰写、文档生成、内容优化\n\n6. **MYTHOS** - 深度推理专家\n   状态：🟢 在线\n   职责：循环推理、深度思考、沉默推理`,
+          steps: [{ step: '1', content: '查询智能体列表', completed: true }, { step: '2', content: '获取各智能体状态', completed: true }, { step: '3', content: '格式化显示智能体信息', completed: true }],
         };
       }
       return {
-        response: `❌ 未知操作: ${action}。可用操作: list, start, stop`,
-        steps: [{ step: '指令识别', content: `检测到指令: /agent ${action}` }, { step: '操作验证', content: `操作 "${action}" 不存在` }, { step: '错误处理', content: '返回操作不存在错误' }],
+        response: `❓ 未知子命令。\n\n可用子命令：\n- /agent list - 列出所有智能体`,
+        steps: [{ step: '1', content: '解析指令', completed: true }, { step: '2', content: '检测无效子命令', completed: true }],
       };
     },
   },
   '/model': {
-    category: '模型管理',
-    description: '管理AI模型',
+    description: '模型管理',
     execute: (args) => {
-      const action = args[0]?.toLowerCase();
-      if (!action) {
+      if (args[0] === 'list') {
         return {
-          response: '❌ 参数错误：请指定操作，如 /model list',
-          steps: [{ step: '指令识别', content: '检测到指令: /model' }, { step: '参数验证', content: '缺少操作参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      if (action === 'list') {
-        return {
-          response: `## 🤖 可用模型
-
-${MODELS.map(m => `### ${m.name}`).join('\n')}`,
-          steps: [{ step: '指令识别', content: '检测到指令: /model list' }, { step: '模型检索', content: '从模型注册表获取列表' }, { step: '响应生成', content: '格式化显示模型信息' }],
-        };
-      }
-      if (action === 'select') {
-        const modelName = args.slice(1).join(' ');
-        if (!modelName) {
-          return {
-            response: '❌ 参数错误：请指定模型名称，如 /model select Hermes-4 Pro',
-            steps: [{ step: '指令识别', content: '检测到指令: /model select' }, { step: '参数验证', content: '缺少模型名称' }, { step: '错误处理', content: '返回参数缺失错误' }],
-          };
-        }
-        return {
-          response: `✅ 已切换到模型: ${modelName}\n\n正在加载模型配置...\n预计完成时间：约10秒`,
-          steps: [{ step: '指令识别', content: `检测到指令: /model select ${modelName}` }, { step: '模型验证', content: `验证模型 "${modelName}" 可用` }, { step: '配置更新', content: '更新当前模型配置' }, { step: '加载模型', content: '初始化模型实例' }],
-        };
-      }
-      if (action === 'auto') {
-        return {
-          response: `## 🔄 智能模型路由已启用
-
-**路由策略**：
-- 🟢 简单任务 → Llama 3.3 70B (低成本)
-- 🟡 中等任务 → Claude 3.5 Sonnet (平衡)
-- 🔴 复杂任务 → Hermes-4 Pro / GPT-4o (高性能)
-
-系统将根据任务复杂度自动选择最优模型。`,
-          steps: [{ step: '指令识别', content: '检测到指令: /model auto' }, { step: '策略配置', content: '启用智能模型选择策略' }, { step: '状态更新', content: '更新路由配置为自动模式' }],
+          response: `🧠 可用模型：\n\n1. **Hermes-4 Pro** (Nous Research)\n   能力：代码生成、复杂推理、多模态\n   成本：高\n   状态：✅ 可用\n\n2. **GPT-4o** (OpenAI)\n   能力：通用任务、代码、图像理解\n   成本：高\n   状态：✅ 可用\n\n3. **Claude 3.5 Sonnet** (Anthropic)\n   能力：长上下文、分析任务、代码\n   成本：中\n   状态：✅ 可用\n\n4. **Llama 3.3 70B** (Meta)\n   能力：本地运行、隐私保护、通用任务\n   成本：低\n   状态：✅ 可用\n\n5. **Mistral Large 2** (Mistral)\n   能力：快速响应、代码、推理\n   成本：中\n   状态：✅ 可用\n\n6. **OpenMythos** (Open Source)\n   能力：循环推理、深度思考、沉默推理\n   成本：中\n   状态：✅ 可用`,
+          steps: [{ step: '1', content: '查询模型列表', completed: true }, { step: '2', content: '获取模型详细信息', completed: true }, { step: '3', content: '格式化显示模型信息', completed: true }],
         };
       }
       return {
-        response: `❌ 未知操作: ${action}。可用操作: list, select, auto`,
-        steps: [{ step: '指令识别', content: `检测到指令: /model ${action}` }, { step: '操作验证', content: `操作 "${action}" 不存在` }, { step: '错误处理', content: '返回操作不存在错误' }],
+        response: `❓ 未知子命令。\n\n可用子命令：\n- /model list - 列出所有可用模型`,
+        steps: [{ step: '1', content: '解析指令', completed: true }, { step: '2', content: '检测无效子命令', completed: true }],
       };
     },
   },
   '/skill': {
-    category: '技能管理',
-    description: '管理自动技能',
+    description: '技能管理',
     execute: (args) => {
-      const action = args[0]?.toLowerCase();
-      if (!action) {
+      if (args[0] === 'list') {
         return {
-          response: '❌ 参数错误：请指定操作，如 /skill list',
-          steps: [{ step: '指令识别', content: '检测到指令: /skill' }, { step: '参数验证', content: '缺少操作参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      if (action === 'list') {
-        return {
-          response: `## 🧠 自动技能列表
-
-### 1. 每日邮件分类规则
-- 触发条件：邮件主题包含URGENT或VIP发件人
-- 置信度：92%
-- 优化次数：5次
-
-### 2. 会议纪要生成
-- 触发条件：收到会议记录邮件
-- 置信度：87%
-- 优化次数：3次
-
-### 3. 周报自动生成
-- 触发条件：每周一08:00
-- 置信度：95%
-- 优化次数：8次`,
-          steps: [{ step: '指令识别', content: '检测到指令: /skill list' }, { step: '技能检索', content: '从技能库获取自动技能' }, { step: '响应生成', content: '格式化显示技能信息' }],
-        };
-      }
-      if (action === 'train') {
-        return {
-          response: `## 🚀 开始训练新技能
-
-**训练流程**：
-1. 📊 分析历史对话数据
-2. 🔍 识别重复模式和成功案例
-3. ✨ 生成技能定义
-4. 🧪 在沙盒环境测试
-5. 💾 验证通过后保存到技能库
-
-预计完成时间：约30秒`,
-          steps: [{ step: '指令识别', content: '检测到指令: /skill train' }, { step: '数据收集', content: '收集历史对话和任务数据' }, { step: '模式识别', content: '识别可自动化的模式' }, { step: '技能生成', content: '生成新的自动技能定义' }, { step: '测试验证', content: '在沙盒环境中测试技能' }, { step: '持久化', content: '将技能保存到技能库' }],
+          response: `⚡ 已安装技能：\n\n1. **代码生成** - 根据需求描述自动生成代码\n   使用次数：45次\n\n2. **文档摘要** - 自动提取文档关键信息\n   使用次数：32次\n\n3. **数据分析** - 分析数据并生成可视化报告\n   使用次数：28次\n\n4. **翻译助手** - 支持多种语言的翻译功能\n   使用次数：56次\n\n5. **PDF处理** - PDF文档编辑和转换\n   使用次数：15次\n\n📦 可安装技能：图像生成、语音转文字、表格处理\n\n💡 自动技能：每日邮件分类规则、会议纪要生成、周报自动生成`,
+          steps: [{ step: '1', content: '查询已安装技能', completed: true }, { step: '2', content: '获取可安装技能', completed: true }, { step: '3', content: '获取自动学习技能', completed: true }],
         };
       }
       return {
-        response: `❌ 未知操作: ${action}。可用操作: list, train`,
-        steps: [{ step: '指令识别', content: `检测到指令: /skill ${action}` }, { step: '操作验证', content: `操作 "${action}" 不存在` }, { step: '错误处理', content: '返回操作不存在错误' }],
-      };
-    },
-  },
-  '/memory': {
-    category: '记忆管理',
-    description: '管理多层次记忆系统',
-    execute: (args) => {
-      const action = args[0]?.toLowerCase();
-      if (!action) {
-        return {
-          response: '❌ 参数错误：请指定操作，如 /memory list',
-          steps: [{ step: '指令识别', content: '检测到指令: /memory' }, { step: '参数验证', content: '缺少操作参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      if (action === 'list') {
-        return {
-          response: `## 💾 记忆系统内容
-
-### 📝 会话记忆
-- 用户偏好使用深色主题
-- 当前正在处理API文档编写任务
-
-### 🔒 持久记忆
-- 用户是软件开发者，主要使用Python和JavaScript
-- 用户每周一会生成周报
-
-### 🧠 技能记忆
-- 用户经常询问代码生成相关问题，偏好简洁的代码风格`,
-          steps: [{ step: '指令识别', content: '检测到指令: /memory list' }, { step: '记忆检索', content: '从三个记忆层获取数据' }, { step: '响应生成', content: '分类显示记忆内容' }],
-        };
-      }
-      if (action === 'clear') {
-        const type = args[1]?.toLowerCase();
-        const typeNames: Record<string, string> = { session: '会话记忆', persistent: '持久记忆', skill: '技能记忆' };
-        if (!type) {
-          return {
-            response: '✅ 所有记忆已清空',
-            steps: [{ step: '指令识别', content: '检测到指令: /memory clear' }, { step: '确认操作', content: '确认清空所有记忆' }, { step: '执行清空', content: '清除会话、持久和技能记忆' }],
-          };
-        }
-        if (!typeNames[type]) {
-          return {
-            response: `❌ 无效类型: ${type}。可用类型: ${Object.keys(typeNames).join(', ')}`,
-            steps: [{ step: '指令识别', content: `检测到指令: /memory clear ${type}` }, { step: '类型验证', content: `类型 "${type}" 不存在` }, { step: '错误处理', content: '返回类型不存在错误' }],
-          };
-        }
-        return {
-          response: `✅ ${typeNames[type]}已清空`,
-          steps: [{ step: '指令识别', content: `检测到指令: /memory clear ${type}` }, { step: '确认操作', content: `确认清空${typeNames[type]}` }, { step: '执行清空', content: `清除${typeNames[type]}` }],
-        };
-      }
-      return {
-        response: `❌ 未知操作: ${action}。可用操作: list, clear`,
-        steps: [{ step: '指令识别', content: `检测到指令: /memory ${action}` }, { step: '操作验证', content: `操作 "${action}" 不存在` }, { step: '错误处理', content: '返回操作不存在错误' }],
-      };
-    },
-  },
-  '/open': {
-    category: '应用操作',
-    description: '打开应用程序',
-    execute: (args) => {
-      const app = args[0]?.toLowerCase();
-      const apps: Record<string, string> = {
-        chrome: 'Chrome 浏览器', terminal: '终端', vscode: 'VS Code', finder: '文件管理器',
-        notepad: '记事本', calculator: '计算器', safari: 'Safari 浏览器',
-        mail: '邮件', music: '音乐', photos: '照片',
-      };
-      if (!app) {
-        return {
-          response: '❌ 参数错误：请指定要打开的应用，如 /open chrome',
-          steps: [{ step: '指令识别', content: '检测到指令: /open' }, { step: '参数验证', content: '缺少应用名称参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      if (!apps[app]) {
-        return {
-          response: `❌ 无法识别应用: ${app}。可用应用: ${Object.keys(apps).join(', ')}`,
-          steps: [{ step: '指令识别', content: `检测到指令: /open ${app}` }, { step: '应用查找', content: `未找到应用 "${app}"` }, { step: '错误处理', content: '返回应用未找到错误' }],
-        };
-      }
-      return {
-        response: `正在打开 ${apps[app]}...`,
-        steps: [{ step: '指令识别', content: `检测到指令: /open ${app}` }, { step: '应用查找', content: `定位应用程序: ${apps[app]}` }, { step: '操作执行', content: `启动 ${apps[app]}` }, { step: '状态反馈', content: '返回操作结果' }],
-      };
-    },
-  },
-  '/search': {
-    category: '浏览器操作',
-    description: '在浏览器中搜索',
-    execute: (args) => {
-      const query = args.join(' ');
-      if (!query) {
-        return {
-          response: '❌ 参数错误：请指定搜索关键词，如 /search 天气',
-          steps: [{ step: '指令识别', content: '检测到指令: /search' }, { step: '参数验证', content: '缺少搜索关键词' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      return {
-        response: `正在搜索: "${query}"...`,
-        steps: [{ step: '指令识别', content: `检测到指令: /search ${query}` }, { step: '搜索处理', content: `构建搜索查询: ${query}` }, { step: '操作执行', content: '打开浏览器执行搜索' }],
-        toolCall: { name: 'web_search', description: '执行网络搜索', params: { query } },
-      };
-    },
-  },
-  '/navigate': {
-    category: '浏览器操作',
-    description: '导航到指定网址',
-    execute: (args) => {
-      const url = args.join(' ');
-      if (!url) {
-        return {
-          response: '❌ 参数错误：请指定网址，如 /navigate https://www.example.com',
-          steps: [{ step: '指令识别', content: '检测到指令: /navigate' }, { step: '参数验证', content: '缺少网址参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      const isValidUrl = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w.-]*)*\/?$/.test(url);
-      if (!isValidUrl && !url.includes('.')) {
-        return {
-          response: `❌ 无效网址: ${url}。请输入有效的URL地址`,
-          steps: [{ step: '指令识别', content: `检测到指令: /navigate ${url}` }, { step: 'URL验证', content: '网址格式无效' }, { step: '错误处理', content: '返回网址格式错误' }],
-        };
-      }
-      return {
-        response: `正在打开网址: ${url}...`,
-        steps: [{ step: '指令识别', content: `检测到指令: /navigate ${url}` }, { step: 'URL验证', content: '验证网址格式' }, { step: '操作执行', content: '在浏览器中打开网址' }],
-      };
-    },
-  },
-  '/config': {
-    category: '应用配置',
-    description: '配置系统设置',
-    execute: (args) => {
-      const setting = args[0]?.toLowerCase();
-      const value = args[1];
-      if (!setting) {
-        return {
-          response: '❌ 参数错误：请指定配置项，如 /config theme dark',
-          steps: [{ step: '指令识别', content: '检测到指令: /config' }, { step: '参数验证', content: '缺少配置项参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-        };
-      }
-      if (setting === 'theme') {
-        if (!value) {
-          return {
-            response: '❌ 参数错误：请指定主题值，如 /config theme dark',
-            steps: [{ step: '指令识别', content: '检测到指令: /config theme' }, { step: '参数验证', content: '缺少主题值参数' }, { step: '错误处理', content: '返回参数缺失错误' }],
-          };
-        }
-        if (value === 'dark') {
-          return {
-            response: '✅ 已设置为深色主题',
-            steps: [{ step: '指令识别', content: '检测到指令: /config theme dark' }, { step: '主题切换', content: '切换到深色主题' }, { step: '状态更新', content: '保存主题设置' }],
-          };
-        }
-        if (value === 'light') {
-          return {
-            response: '✅ 已设置为浅色主题',
-            steps: [{ step: '指令识别', content: '检测到指令: /config theme light' }, { step: '主题切换', content: '切换到浅色主题' }, { step: '状态更新', content: '保存主题设置' }],
-          };
-        }
-        return {
-          response: `❌ 无效主题值: ${value}。可用值: dark, light`,
-          steps: [{ step: '指令识别', content: `检测到指令: /config theme ${value}` }, { step: '值验证', content: `主题值 "${value}" 无效` }, { step: '错误处理', content: '返回无效值错误' }],
-        };
-      }
-      return {
-        response: `❌ 未知配置项: ${setting}。可用配置: theme`,
-        steps: [{ step: '指令识别', content: `检测到指令: /config ${setting}` }, { step: '配置验证', content: `配置项 "${setting}" 不存在` }, { step: '错误处理', content: '返回配置项不存在错误' }],
+        response: `❓ 未知子命令。\n\n可用子命令：\n- /skill list - 列出所有技能`,
+        steps: [{ step: '1', content: '解析指令', completed: true }, { step: '2', content: '检测无效子命令', completed: true }],
       };
     },
   },
 };
 
-const App = () => {
+function App() {
   const [activeSection, setActiveSection] = useState('task-all-tasks');
-  const [selectedTab, setSelectedTab] = useState('assistant');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: '您好！我是意念AI，您的智能助手。\n\n我支持以下功能：\n\n**🤖 智能体系统**\n- JARVIS - 基础设施守护者\n- HERMES - 邮件管道\n- CHRONOS - 时间架构师\n- LEDGER - 财务管家\n- CYRANO - 文案助手\n- MYTHOS - 深度推理专家\n\n**🧠 模型管理**\n- Hermes-4 Pro（本地）\n- GPT-4o（云端）\n- Claude 3.5 Sonnet\n- Llama 3.3 70B\n- Mistral Large 2\n\n**💡 指令系统**\n输入 `/help` 查看所有可用指令\n\n请问我可以帮您做什么？',
-      sender: 'assistant',
-      timestamp: new Date(),
-    },
-  ]);
+  const [selectedTab, setSelectedTab] = useState<'assistant' | 'tasks' | 'files'>('assistant');
+  const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed'>('all');
+  
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [logs, setLogs] = useState<LogEntry[]>([
-    { timestamp: new Date().toLocaleTimeString(), message: '系统已启动', type: 'success' },
-    { timestamp: new Date().toLocaleTimeString(), message: '本地模型 Hermes-4 Pro 加载成功', type: 'success' },
-    { timestamp: new Date().toLocaleTimeString(), message: '智能体系统初始化完成', type: 'info' },
-    { timestamp: new Date().toLocaleTimeString(), message: '6个智能体已注册', type: 'info' },
-  ]);
+  const [messageType, setMessageType] = useState<'text' | 'voice' | 'image' | 'file'>('text');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
-  const [showHelp, setShowHelp] = useState(false);
-  const [messageType, setMessageType] = useState<'text' | 'voice' | 'image' | 'file'>('text');
   const [isRecording, setIsRecording] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [connectionMode, setConnectionMode] = useState<'local' | 'cloud' | 'auto'>('auto');
   const [currentModel, setCurrentModel] = useState('Hermes-4 Pro');
-  const [connectionMode, setConnectionMode] = useState<'local' | 'cloud' | 'auto'>('local');
-  const [isConnected, setIsConnected] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [showHelp, setShowHelp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const addLog = useCallback((message: string, type: LogEntry['type']) => {
+    setLogs(prev => [...prev.slice(-49), { timestamp: new Date().toLocaleTimeString(), message, type }]);
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -546,9 +172,10 @@ const App = () => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const addLog = (message: string, type: LogEntry['type'] = 'info') => {
-    setLogs(prev => [...prev.slice(-49), { timestamp: new Date().toLocaleTimeString(), message, type }]);
-  };
+  useEffect(() => {
+    addLog('意念AI启动成功', 'success');
+    addLog('已连接到本地模型', 'info');
+  }, [addLog]);
 
   const executeCommand = (command: string): { response: string; steps: ThinkingStep[]; toolCall?: ToolCall } | null => {
     const parts = command.trim().split(' ');
@@ -558,6 +185,13 @@ const App = () => {
     if (COMMANDS[cmd]) {
       return COMMANDS[cmd].execute(args);
     }
+    
+    const shortCmd = cmd.split('/')[1];
+    const baseCommands = ['agent', 'model', 'skill'];
+    if (baseCommands.includes(shortCmd)) {
+      return COMMANDS['/' + shortCmd].execute(args);
+    }
+    
     return null;
   };
 
@@ -607,95 +241,41 @@ const App = () => {
       setThinkingSteps([]);
 
       if (content === '/clear') {
-        setMessages([]);
-        addLog('对话已清空', 'info');
+        setTimeout(() => {
+          setMessages([]);
+          addLog('对话已清空', 'info');
+        }, 500);
       }
     } else {
-      setIsThinking(true);
-      const thinking = [
-        { step: '意图分析', content: '分析用户输入意图' },
-        { step: '知识检索', content: '检索相关知识库' },
-        { step: '模型推理', content: `使用${currentModel}进行推理` },
-        { step: '响应生成', content: '生成自然语言响应' },
+      const thinkingContent = [
+        { step: '1', content: '理解用户意图' },
+        { step: '2', content: '分析问题需求' },
+        { step: '3', content: '生成响应方案' },
+        { step: '4', content: '优化回答质量' },
       ];
-      setThinkingSteps(thinking);
 
-      for (let i = 0; i < thinking.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 400));
+      setIsThinking(true);
+      setThinkingSteps(thinkingContent);
+
+      for (let i = 0; i < thinkingContent.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 200));
         setThinkingSteps(prev => prev.map((step, idx) => idx <= i ? { ...step, completed: true } : step));
       }
 
-      // 智能响应生成
-      const generateResponse = (input: string): string => {
-        const lowerInput = input.toLowerCase();
-
-        // 问候类
-        if (lowerInput.match(/你好|您好|hello|hi|嗨|早上好|晚上好/)) {
-          return '您好！我是意念AI，很高兴为您服务！有什么我可以帮助您的吗？';
-        }
-
-        // 自我介绍
-        if (lowerInput.match(/你是谁|介绍一下|什么.*ai|你的名字/)) {
-          return '我是**意念AI**，一个智能助手平台。\n\n我具备以下能力：\n- 🤖 智能对话与问答\n- 📋 任务管理与调度\n- 📁 文件管理与处理\n- 🔧 系统配置与控制\n- 🧠 多模型支持（本地/云端）\n\n请问有什么可以帮您？';
-        }
-
-        // 功能询问
-        if (lowerInput.match(/能做什么|功能|有什么用|怎么用/)) {
-          return '我可以帮您完成以下任务：\n\n**💬 智能对话**\n- 回答问题、提供建议\n- 文本生成与编辑\n\n**📋 任务管理**\n- 创建、编辑、删除任务\n- 设置优先级和截止日期\n\n**📁 文件操作**\n- 上传、预览、下载文件\n- 文件重命名和删除\n\n**⚙️ 系统控制**\n- 配置连接模式\n- 切换AI模型\n- 设置定时任务\n\n**🤖 智能体系统**\n- JARVIS: 系统监控\n- HERMES: 邮件处理\n- CHRONOS: 日程管理\n- LEDGER: 财务管理\n- CYRANO: 文案创作';
-        }
-
-        // 天气
-        if (lowerInput.match(/天气|温度|下雨|晴天/)) {
-          return '抱歉，我目前无法获取实时天气数据。\n\n您可以尝试以下方式：\n- 使用指令 `/search 天气 [城市名]` 搜索天气信息\n- 访问天气网站获取实时数据\n\n我会在未来版本中集成天气API。';
-        }
-
-        // 时间
-        if (lowerInput.match(/时间|几点|日期|今天/)) {
-          const now = new Date();
-          const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-          return `当前时间：**${now.toLocaleTimeString()}**\n\n今天是 ${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 星期${weekdays[now.getDay()]}`;
-        }
-
-        // 帮助
-        if (lowerInput.match(/帮助|help|怎么操作/)) {
-          return '以下是我支持的指令：\n\n**系统指令**\n- `/help` - 显示帮助信息\n- `/clear` - 清空对话\n- `/status` - 查看系统状态\n- `/time` - 显示当前时间\n\n**应用控制**\n- `/open [应用名]` - 打开应用\n- `/close [应用名]` - 关闭应用\n\n**搜索**\n- `/search [关键词]` - 搜索内容\n\n**配置**\n- `/config theme [dark/light]` - 切换主题';
-        }
-
-        // 感谢
-        if (lowerInput.match(/谢谢|感谢|thanks|thank/)) {
-          return '不客气！很高兴能帮到您。如果还有其他问题，随时可以问我！';
-        }
-
-        // 再见
-        if (lowerInput.match(/再见|拜拜|bye|goodbye/)) {
-          return '再见！期待下次与您交流。祝您生活愉快！';
-        }
-
-        // 编程相关
-        if (lowerInput.match(/代码|编程|python|javascript|java|html|css/)) {
-          return '我可以帮助您解决编程问题！请告诉我具体的需求，例如：\n\n- 某种语言的语法问题\n- 代码调试\n- 算法实现\n- 最佳实践建议\n\n请详细描述您的问题，我会尽力帮助您。';
-        }
-
-        // 学习相关
-        if (lowerInput.match(/学习|教程|怎么学|入门/)) {
-          return '学习建议：\n\n1. **明确目标** - 确定您想学习的领域\n2. **制定计划** - 分解学习任务\n3. **实践为主** - 多动手练习\n4. **持续迭代** - 不断复习和提升\n\n您想学习哪个领域？我可以提供更具体的建议。';
-        }
-
-        // 默认响应
-        const truncatedInput = input.substring(0, 20);
-        return `我收到了您的问题："${input.substring(0, 50)}${input.length > 50 ? '...' : ''}"\n\n让我来分析一下：\n\n这是一个很好的问题！为了给您更准确的回答，您可以：\n\n1. 提供更多背景信息\n2. 说明具体的使用场景\n3. 或者使用指令 /search ${truncatedInput} 进行搜索\n\n我会尽力帮助您解决问题。`;
-      };
-
+      const apiResponse = await sendMessage(content);
+      
       const assistantMessage: Message = {
         id: `msg-${Date.now() + 1}`,
-        content: generateResponse(content),
+        content: apiResponse.content,
         sender: 'assistant',
         timestamp: new Date(),
-        thinking,
+        thinking: apiResponse.thinking.length > 0 
+          ? apiResponse.thinking.map(s => ({ ...s, completed: true }))
+          : thinkingContent.map(s => ({ ...s, completed: true })),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      addLog('助手响应完成', 'success');
+      addLog('AI响应生成完成', 'success');
       setIsThinking(false);
       setThinkingSteps([]);
     }
@@ -709,29 +289,51 @@ const App = () => {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
-    }
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(prev => [...prev, ...files]);
   };
 
   const handleStartRecording = () => {
     setIsRecording(true);
-    addLog('开始语音录制', 'info');
+    addLog('开始录音', 'info');
   };
 
   const handleStopRecording = () => {
     setIsRecording(false);
-    addLog('语音录制完成', 'success');
-    setInputValue('(语音消息) 您好，我是意念AI');
+    addLog('录音停止', 'info');
+    setMessages(prev => [...prev, {
+      id: `msg-${Date.now()}`,
+      content: '🎤 语音消息已录制',
+      sender: 'user',
+      timestamp: new Date(),
+      type: 'voice',
+    }]);
   };
 
   const renderContent = () => {
     if (selectedTab === 'tasks') {
-      const filter = activeSection.split('-')[1] || 'all';
-      return <TaskPanel filter={filter as 'all' | 'in_progress' | 'completed'} />;
+      return <TaskPanel filter={filter} />;
     }
     if (selectedTab === 'files') {
       return <FileManager />;
+    }
+    if (activeSection === 'task-all-tasks') {
+      return <TaskPanel filter="all" />;
+    }
+    if (activeSection === 'task-in-progress') {
+      return <TaskPanel filter="in_progress" />;
+    }
+    if (activeSection === 'task-completed') {
+      return <TaskPanel filter="completed" />;
+    }
+    if (activeSection.startsWith('agent-')) {
+      return <AgentPanel agentId={activeSection.split('-')[1]} />;
+    }
+    if (activeSection === 'skill-store' || activeSection === 'my-skills') {
+      return <SkillCenter activeTab={activeSection} />;
+    }
+    if (activeSection === 'memory') {
+      return <MemoryPanel />;
     }
     if (activeSection === 'setting-scheduled') {
       return <ScheduledTasks />;
@@ -739,25 +341,152 @@ const App = () => {
     if (activeSection === 'setting-update') {
       return <SystemUpdate />;
     }
-    if (activeSection.startsWith('agent-')) {
-      return <AgentPanel agentId={activeSection} />;
-    }
-    if (activeSection.startsWith('skill-')) {
-      return <SkillCenter skillId={activeSection} />;
-    }
     if (activeSection === 'setting-connection' || activeSection === 'setting-model') {
       return <SystemSettings activeTab={activeSection} />;
     }
+    if (activeSection === 'create-task') {
+      return (
+        <div className="flex-1 flex flex-col bg-gray-900 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-3 bg-gray-800/50 border-b border-gray-700">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span className="text-sm text-gray-300">新建任务</span>
+            </div>
+            <button
+              onClick={() => setActiveSection('task-all-tasks')}
+              className="text-xs px-3 py-1 bg-gray-700 text-gray-400 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              查看任务列表
+            </button>
+          </div>
+
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 overflow-x-auto overflow-y-auto p-4">
+              <div className="min-w-full max-w-3xl mx-auto space-y-4">
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gray-700 text-gray-300 flex-shrink-0">AI</div>
+                  <div className="max-w-[70%]">
+                    <div className="inline-block px-4 py-2 rounded-2xl bg-gray-800 text-gray-100 rounded-bl-md">
+                      <div className="whitespace-pre-wrap text-sm">
+                        您好！我来帮您创建新任务。请告诉我：
+
+**1️⃣ 任务标题是什么？**（将作为任务的文件名）
+
+**2️⃣ 任务描述（可选）**
+
+**3️⃣ 优先级**（高/中/低，默认中等）
+
+您可以直接输入，我会帮您创建任务。
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                  <h4 className="text-sm font-medium text-gray-300 mb-3">🎯 任务创建示例</h4>
+                  <div className="space-y-2 text-xs text-gray-400">
+                    <p><span className="text-blue-400">快速创建：</span>完成项目报告</p>
+                    <p><span className="text-blue-400">带优先级：</span>完成项目报告 @高</p>
+                    <p><span className="text-blue-400">完整格式：</span>完成项目报告 | 本周五前完成 | 高</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-blue-600 text-white flex-shrink-0">AI</div>
+                  <div className="max-w-[70%]">
+                    <div className="inline-block px-4 py-2 rounded-2xl bg-gray-800 text-gray-100 rounded-bl-md">
+                      <div className="whitespace-pre-wrap text-sm">
+                        <span className="text-yellow-400">💭 思考过程：</span>
+                        
+1. 解析用户输入的任务信息
+2. 提取任务标题（第一部分）
+3. 识别任务描述（| 分隔符后）
+4. 判断优先级（@标记或默认中等）
+5. 创建任务对象并保存
+6. 返回任务创建成功信息
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="w-72 bg-gray-800/30 border-l border-gray-700 p-4 overflow-y-auto">
+              <h4 className="text-sm font-medium text-gray-300 mb-3">📝 快速任务模板</h4>
+              <div className="space-y-2">
+                {['完成周报', '代码审查', '会议准备', '文档更新', '代码重构', 'Bug修复'].map((task, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setMessages(prev => [...prev, {
+                        id: `msg-${Date.now()}`,
+                        content: `✅ 任务创建成功！\n\n**任务标题**: ${task}\n**描述**: 暂无描述\n**优先级**: 中\n**状态**: 待处理`,
+                        sender: 'assistant',
+                        timestamp: new Date(),
+                      }]);
+                    }}
+                    className="w-full text-left px-3 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg text-sm text-gray-300 transition-colors"
+                  >
+                    {task}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 p-4 bg-gray-800/50">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="输入任务信息（如：完成项目报告 | 本周五前完成 | 高）"
+                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = (e.target as HTMLInputElement).value.trim();
+                    if (input) {
+                      const parts = input.split('|').map(p => p.trim());
+                      const title = parts[0];
+                      const description = parts[1] || '';
+                      const priorityPart = parts[2] || parts[0].match(/@(高|中|低)/);
+                      const priority = priorityPart 
+                        ? (priorityPart === '高' ? 'high' : priorityPart === '低' ? 'low' : 'medium')
+                        : 'medium';
+                      
+                      setMessages(prev => [...prev, {
+                        id: `msg-${Date.now()}`,
+                        content: `✅ 任务创建成功！\n\n**任务标题**: ${title.replace(/@(高|中|低)/g, '').trim()}\n**描述**: ${description || '暂无描述'}\n**优先级**: ${priority === 'high' ? '高' : priority === 'medium' ? '中' : '低'}\n**状态**: 待处理`,
+                        sender: 'assistant',
+                        timestamp: new Date(),
+                      }]);
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  setActiveSection('task-all-tasks');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+              >
+                创建任务
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return renderAssistantPanel();
+  };
+
+  const renderAssistantPanel = () => {
     return (
-      <div className="flex-1 flex flex-col bg-gray-900">
+      <div className="flex-1 flex flex-col bg-gray-900 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-3 bg-gray-800/50 border-b border-gray-700">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} ${isConnected ? 'animate-pulse' : ''}`}></div>
-              <span className="text-sm text-gray-400">{connectionMode === 'local' ? '本地模型' : connectionMode === 'cloud' ? '云端模型' : '自动模式'}</span>
-            </div>
-            <div className="text-sm text-gray-400">|</div>
-            <div className="text-sm text-gray-300">当前模型: <span className="text-blue-400">{currentModel}</span></div>
+            <span className="text-sm text-gray-300">智能助手</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -782,30 +511,42 @@ const App = () => {
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 overflow-x-auto overflow-y-auto p-4">
+          <div className="flex-1 overflow-x-auto overflow-y-auto p-4 scrollbar-thin">
             <div className="min-w-full max-w-3xl mx-auto space-y-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
-                    {msg.sender === 'user' ? '您' : 'AI'}
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full py-20">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
+                    <span className="text-3xl font-bold">意</span>
                   </div>
-                  <div className={`max-w-[70%] ${msg.sender === 'user' ? 'text-right' : ''}`}>
-                    <div className={`inline-block px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-br-md' : 'bg-gray-800 text-gray-100 rounded-bl-md'}`}>
-                      <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
-                    </div>
-                    <div className={`text-xs text-gray-500 mt-1 ${msg.sender === 'user' ? 'text-right' : ''}`}>
-                      {msg.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
+                  <h2 className="text-xl font-semibold text-white mb-2">欢迎使用意念AI</h2>
+                  <p className="text-gray-400 text-sm text-center max-w-md">
+                    我可以帮助您完成各种任务。输入消息开始对话，或使用 /help 查看可用指令。
+                  </p>
                 </div>
-              ))}
+              ) : (
+                messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : ''} animate-fadeIn`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                      {msg.sender === 'user' ? '您' : 'AI'}
+                    </div>
+                    <div className={`max-w-[70%] ${msg.sender === 'user' ? 'text-right' : ''}`}>
+                      <div className={`inline-block px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-br-md' : 'bg-gray-800 text-gray-100 rounded-bl-md'}`}>
+                        <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                      </div>
+                      <div className={`text-xs text-gray-500 mt-1 ${msg.sender === 'user' ? 'text-right' : ''}`}>
+                        {msg.timestamp.toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
               
               {isThinking && (
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-300">AI</div>
+                <div className="flex gap-3 animate-fadeIn">
+                  <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-300 flex-shrink-0">AI</div>
                   <div className="max-w-[70%]">
                     <div className="inline-block px-4 py-2 rounded-2xl bg-gray-800 rounded-bl-md">
                       <div className="flex items-center gap-2">
@@ -814,7 +555,7 @@ const App = () => {
                           <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
                           <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
                         </div>
-                        <span className="text-gray-400 text-sm">思考中...</span>
+                        <span className="text-sm text-gray-400">思考中...</span>
                       </div>
                     </div>
                   </div>
@@ -825,43 +566,81 @@ const App = () => {
             </div>
           </div>
 
-          {thinkingSteps.length > 0 && (
-            <div className="w-72 bg-gray-800/50 border-l border-gray-700 p-4 overflow-y-auto">
-              <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                思考过程
-              </h3>
-              <div className="space-y-2">
-                {thinkingSteps.map((step, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-start gap-2 p-2 rounded-lg ${step.completed ? 'bg-gray-700/50' : 'bg-gray-800'}`}
-                  >
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${step.completed ? 'bg-green-500 text-white' : 'bg-gray-600 text-gray-400'}`}>
-                      {step.completed ? (
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        index + 1
-                      )}
-                    </div>
+          <div className="w-72 bg-gray-800/30 border-l border-gray-700 p-4 overflow-y-auto scrollbar-thin">
+            {isThinking ? (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">💭 思考过程</h4>
+                {thinkingSteps.map((step, idx) => (
+                  <div key={idx} className={`flex items-start gap-2 p-2 rounded-lg ${step.completed ? 'bg-green-500/10 text-green-400' : 'bg-gray-700/50 text-gray-400'}`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${step.completed ? 'bg-green-500' : 'bg-gray-600'}`}>
+                      {step.completed ? '✓' : idx + 1}
+                    </span>
                     <div>
-                      <div className={`text-xs font-medium ${step.completed ? 'text-green-400' : 'text-gray-300'}`}>{step.step}</div>
-                      <div className="text-xs text-gray-400 mt-1">{step.content}</div>
+                      <div className="text-xs text-gray-500">步骤 {step.step}</div>
+                      <div className="text-sm">{step.content}</div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : messages.length > 0 && messages[messages.length - 1].thinking ? (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">💭 思考过程</h4>
+                {messages[messages.length - 1].thinking?.map((step, idx) => (
+                  <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-green-500/10 text-green-400">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-green-500 flex-shrink-0">✓</span>
+                    <div>
+                      <div className="text-xs text-gray-500">步骤 {step.step}</div>
+                      <div className="text-sm">{step.content}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">📊 系统状态</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">连接状态</span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      <span className="text-green-400">在线</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">当前模型</span>
+                    <span className="text-gray-300">{currentModel}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">连接模式</span>
+                    <span className="text-gray-300">{connectionMode === 'local' ? '本地' : connectionMode === 'cloud' ? '云端' : '自动'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">消息数</span>
+                    <span className="text-gray-300">{messages.length}</span>
+                  </div>
+                </div>
+
+                <h4 className="text-sm font-medium text-gray-300 mt-4 mb-3">⚡ 快捷指令</h4>
+                <div className="space-y-1">
+                  {Object.keys(COMMANDS).map(cmd => (
+                    <button
+                      key={cmd}
+                      onClick={() => setInputValue(cmd)}
+                      className="w-full text-left px-2 py-1.5 text-xs bg-gray-700/50 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200 transition-colors"
+                    >
+                      <span className="text-blue-400">{cmd}</span>
+                      <span className="ml-2 text-gray-500">{COMMANDS[cmd].description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="bg-gray-800 border-t border-gray-700 p-4">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="flex items-center gap-2">
+        <div className="border-t border-gray-700 p-4 bg-gray-800/50">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setMessageType('text')}
                 className={`p-2 rounded-lg transition-colors ${messageType === 'text' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
@@ -937,7 +716,7 @@ const App = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mt-3">
             {isRecording ? (
               <button
                 onClick={handleStopRecording}
@@ -950,16 +729,7 @@ const App = () => {
               </button>
             ) : (
               <>
-                {messageType === 'voice' ? (
-                  <button
-                    onClick={handleStartRecording}
-                    className="p-3 bg-green-600 text-white rounded-full hover:bg-green-500 transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                  </button>
-                ) : messageType === 'image' ? (
+                {messageType === 'image' ? (
                   <button
                     onClick={() => document.getElementById('image-upload')?.click()}
                     className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-500 transition-colors flex items-center gap-2"
@@ -1007,13 +777,13 @@ const App = () => {
           </div>
 
           {selectedFiles.length > 0 && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               {selectedFiles.map((file, index) => (
                 <div key={index} className="flex items-center gap-2 px-3 py-1 bg-gray-700 rounded-lg">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  <span className="text-sm text-gray-300">{file.name}</span>
+                  <span className="text-sm text-gray-300 truncate max-w-[150px]">{file.name}</span>
                   <button onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}>
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1025,22 +795,22 @@ const App = () => {
           )}
         </div>
 
-        <div className="h-16 bg-gray-900 border-t border-gray-800 overflow-hidden">
-          <div className="h-full flex items-center px-4 gap-1 overflow-x-auto">
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-lg">
+        <div className="h-14 bg-gray-900 border-t border-gray-800 overflow-hidden">
+          <div className="h-full flex items-center px-4 gap-2 overflow-x-auto scrollbar-thin">
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-lg flex-shrink-0">
               <span className="text-xs text-gray-400">快捷指令:</span>
             </div>
             {['/status', '/agent list', '/model list', '/skill list'].map((cmd) => (
               <button
                 key={cmd}
                 onClick={() => setInputValue(cmd)}
-                className="px-3 py-2 bg-gray-800/50 text-gray-300 text-sm rounded-lg hover:bg-gray-700 transition-colors"
+                className="px-3 py-2 bg-gray-800/50 text-gray-300 text-sm rounded-lg hover:bg-gray-700 transition-colors flex-shrink-0"
               >
                 {cmd}
               </button>
             ))}
             <div className="flex-1" />
-            <div className="flex items-center gap-4 text-xs text-gray-500">
+            <div className="flex items-center gap-4 text-xs text-gray-500 flex-shrink-0">
               <span className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                 在线
@@ -1054,65 +824,77 @@ const App = () => {
   };
 
   return (
-    <div className="h-screen flex bg-gray-900 text-white overflow-hidden">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-3 bg-gray-800 border-b border-gray-700">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <span className="text-lg font-bold">意</span>
-              </div>
-              <span className="font-semibold text-lg">意念AI</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSelectedTab('assistant')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedTab === 'assistant' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-            >
-              智能助手
-            </button>
-            <button
-              onClick={() => setSelectedTab('tasks')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedTab === 'tasks' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-            >
-              任务中心
-            </button>
-            <button
-              onClick={() => setSelectedTab('files')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedTab === 'files' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-            >
-              文件管理
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-hidden">
-          {renderContent()}
-        </div>
-
-        {selectedTab === 'assistant' && (
-          <div className="h-20 bg-gray-900/50 border-t border-gray-800 overflow-hidden">
-            <div className="h-full flex items-center px-4 gap-2 overflow-x-auto">
-              <div className="text-xs text-gray-500 mr-2">系统日志:</div>
-              {logs.slice(-8).map((log, index) => (
-                <div key={index} className="flex items-center gap-2 px-2 py-1">
-                  <span className={`text-xs ${log.type === 'success' ? 'text-green-400' : log.type === 'error' ? 'text-red-400' : log.type === 'warning' ? 'text-yellow-400' : 'text-gray-400'}`}>
-                    {log.message}
-                  </span>
+    <div className="h-screen flex flex-col bg-gray-900 text-white overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
+        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-3 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-lg font-bold">意</span>
                 </div>
-              ))}
+                <span className="text-lg font-semibold">意念AI</span>
+              </div>
+              
+              {activeSection === 'task-all-tasks' || 
+               activeSection === 'task-in-progress' || 
+               activeSection === 'task-completed' ? (
+                <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg p-1">
+                  <button
+                    onClick={() => { setFilter('all'); setActiveSection('task-all-tasks'); }}
+                    className={`px-3 py-1.5 text-xs rounded-md transition-colors ${filter === 'all' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                  >
+                    全部
+                  </button>
+                  <button
+                    onClick={() => { setFilter('in_progress'); setActiveSection('task-in-progress'); }}
+                    className={`px-3 py-1.5 text-xs rounded-md transition-colors ${filter === 'in_progress' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                  >
+                    进行中
+                  </button>
+                  <button
+                    onClick={() => { setFilter('completed'); setActiveSection('task-completed'); }}
+                    className={`px-3 py-1.5 text-xs rounded-md transition-colors ${filter === 'completed' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                  >
+                    已完成
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span>在线</span>
+                </div>
+                <div className="w-px h-4 bg-gray-600"></div>
+                <span>{currentModel}</span>
+              </div>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
             </div>
           </div>
-        )}
+
+          <div className="flex-1 overflow-hidden">
+            {renderContent()}
+          </div>
+        </div>
       </div>
 
       {showHelp && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowHelp(false)}>
           <div className="bg-gray-800 rounded-xl w-[600px] max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <h2 className="font-semibold">指令帮助</h2>
+              <h2 className="font-semibold text-white">帮助中心</h2>
               <button onClick={() => setShowHelp(false)} className="p-1 hover:bg-gray-700 rounded">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1120,8 +902,77 @@ const App = () => {
               </button>
             </div>
             <div className="p-4 overflow-y-auto max-h-[calc(80vh-60px)]">
-              <div className="prose prose-invert max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: COMMANDS['/help'].execute([]).response.replace(/\n/g, '<br>') }} />
+              <h3 className="text-sm font-medium text-gray-300 mb-3">📋 可用指令</h3>
+              <div className="space-y-2">
+                {Object.entries(COMMANDS).map(([cmd, info]) => (
+                  <div key={cmd} className="flex items-center justify-between px-3 py-2 bg-gray-700/50 rounded-lg">
+                    <span className="text-blue-400 font-mono text-sm">{cmd}</span>
+                    <span className="text-gray-400 text-sm">{info.description}</span>
+                  </div>
+                ))}
+              </div>
+              
+              <h3 className="text-sm font-medium text-gray-300 mt-4 mb-3">💬 消息类型</h3>
+              <div className="space-y-2 text-sm text-gray-400">
+                <p><span className="text-blue-400">文本消息</span> - 普通文字消息</p>
+                <p><span className="text-green-400">语音消息</span> - 录制语音发送</p>
+                <p><span className="text-purple-400">图片消息</span> - 发送图片</p>
+                <p><span className="text-orange-400">文件消息</span> - 发送文件</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
+          <div className="bg-gray-800 rounded-xl w-[600px]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <h2 className="font-semibold text-white">系统设置</h2>
+              <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-gray-700 rounded">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">连接模式</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConnectionMode('local')}
+                      className={`flex-1 py-2 rounded-lg transition-colors ${connectionMode === 'local' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+                    >
+                      本地
+                    </button>
+                    <button
+                      onClick={() => setConnectionMode('cloud')}
+                      className={`flex-1 py-2 rounded-lg transition-colors ${connectionMode === 'cloud' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+                    >
+                      云端
+                    </button>
+                    <button
+                      onClick={() => setConnectionMode('auto')}
+                      className={`flex-1 py-2 rounded-lg transition-colors ${connectionMode === 'auto' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+                    >
+                      自动
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">当前模型</label>
+                  <select
+                    value={currentModel}
+                    onChange={(e) => setCurrentModel(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="Hermes-4 Pro">Hermes-4 Pro</option>
+                    <option value="GPT-4o">GPT-4o</option>
+                    <option value="Claude 3.5 Sonnet">Claude 3.5 Sonnet</option>
+                    <option value="Llama 3.3 70B">Llama 3.3 70B</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -1129,6 +980,6 @@ const App = () => {
       )}
     </div>
   );
-};
+}
 
 export default App;

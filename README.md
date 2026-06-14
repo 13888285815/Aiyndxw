@@ -155,4 +155,93 @@ bash start-local.sh
 | `NEXT_PUBLIC_BACKEND_HOST` | 前端开发代理目标主机 | 否 | 本地主机 | `127.0.0.1` |
 | `NEXT_PUBLIC_BACKEND_PORT` | 前端开发代理目标端口 | 否 | `18080` | `18080` |
 
-**最后更新**：二零二六年五月十六日（含零门槛本地启动脚本说明）
+## 支持的 AI 模型
+
+系统支持多种 AI 模型配置，包括本地开源模型和云端 API：
+
+### 本地模型（推荐）
+
+#### Hermes-4 Pro（默认配置）
+```bash
+# 安装 Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# 下载 Hermes 模型
+ollama pull hermes3
+
+# 启动 Ollama 服务
+ollama serve
+```
+
+配置说明：
+- Provider: `ollama`
+- API URL: `http://localhost:11434/v1/chat/completions`
+- Model: `hermes3`
+- API Key: `ollama`
+
+### 云端模型（需配置 API Key）
+
+| 模型 | Provider | API URL |
+|------|----------|---------|
+| GPT-4o | custom | https://api.openai.com/v1/chat/completions |
+| Claude 3.5 Sonnet | custom | https://api.anthropic.com/v1/messages |
+
+### 模型配置管理
+
+登录管理员后台后，在「设置」页面可以：
+- 查看已配置的模型列表
+- 创建新的模型配置
+- 启用/禁用模型
+- 设置模型是否对访客开放
+
+## 快速配置 Hermes 模型
+
+1. **安装 Ollama**（首次使用）：
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+2. **下载并启动 Hermes**：
+```bash
+ollama run hermes3
+```
+
+3. **启动应用**：
+```bash
+docker-compose up -d
+```
+
+> **提示**：服务启动时会自动创建默认的 AI 配置，包括 Hermes-4 Pro 模型配置。
+
+## 项目结构
+
+```
+.
+├── AIyndxw/                    # 桌面端应用（Electron）
+│   ├── src/
+│   │   ├── components/         # UI 组件
+│   │   ├── pages/              # 页面
+│   │   ├── data/               # Mock 数据
+│   │   └── utils/              # 工具函数
+│   └── package.json
+├── backend/                    # 后端服务（Go）
+│   ├── controller/             # API 控制器
+│   ├── service/                # 业务逻辑层
+│   ├── repository/             # 数据访问层
+│   ├── models/                 # 数据模型
+│   ├── router/                 # 路由配置
+│   ├── middleware/             # 中间件
+│   ├── infra/                  # 基础设施
+│   ├── websocket/              # WebSocket 服务
+│   └── main.go                 # 启动入口
+├── frontend/                   # 前端应用（Next.js）
+│   ├── app/                    # 应用页面
+│   ├── components/             # UI 组件
+│   ├── features/               # 业务功能模块
+│   └── lib/                    # 工具库
+├── docker-compose.yml          # Docker Compose 配置
+├── .env                        # 环境变量配置
+└── start-local.sh              # 一键启动脚本
+```
+
+**最后更新**：二零二六年六月十日（新增 Hermes 模型配置说明）

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface SidebarProps {
   activeSection: string;
@@ -6,10 +6,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => {
-  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const taskCenter = [
     { id: 'all-tasks', label: '全部任务', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
     { id: 'in-progress', label: '进行中', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', count: 3 },
@@ -27,6 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
   const skills = [
     { id: 'skill-store', label: '技能商店', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' },
     { id: 'my-skills', label: '我的技能', icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z', count: 8 },
+    { id: 'memory', label: '记忆系统', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
   ];
 
   const settings = [
@@ -85,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
     <aside className="w-64 bg-[#0d1117] border-r border-gray-800 flex flex-col shrink-0">
       <div className="p-3 border-b border-gray-800">
         <button
-          onClick={() => setShowNewTaskModal(true)}
+          onClick={() => onSectionChange('create-task')}
           className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-medium rounded-lg hover:from-blue-500 hover:to-blue-400 transition-all flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,98 +98,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
         {renderSection('技能中心', skills, '')}
         {renderSection('系统设置', settings, 'setting')}
       </nav>
-
-      {showNewTaskModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewTaskModal(false)}>
-          <div className="bg-gray-800 rounded-xl w-[500px] p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-white">新建任务</h2>
-              <button onClick={() => setShowNewTaskModal(false)} className="p-1 hover:bg-gray-700 rounded">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">任务标题</label>
-                <input
-                  type="text"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="请输入任务标题"
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">任务描述</label>
-                <textarea
-                  value={newTaskDescription}
-                  onChange={(e) => setNewTaskDescription(e.target.value)}
-                  placeholder="请输入任务描述"
-                  rows={4}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">优先级</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setNewTaskPriority('low')}
-                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                      newTaskPriority === 'low' ? 'bg-gray-600 text-white border-2 border-blue-500' : 'bg-gray-700 text-gray-400 border-2 border-transparent'
-                    }`}
-                  >
-                    低
-                  </button>
-                  <button
-                    onClick={() => setNewTaskPriority('medium')}
-                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                      newTaskPriority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-2 border-yellow-500' : 'bg-gray-700 text-gray-400 border-2 border-transparent'
-                    }`}
-                  >
-                    中
-                  </button>
-                  <button
-                    onClick={() => setNewTaskPriority('high')}
-                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                      newTaskPriority === 'high' ? 'bg-red-500/20 text-red-400 border-2 border-red-500' : 'bg-gray-700 text-gray-400 border-2 border-transparent'
-                    }`}
-                  >
-                    高
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowNewTaskModal(false)}
-                  className="flex-1 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={() => {
-                    if (newTaskTitle.trim()) {
-                      alert('任务创建成功！');
-                      setNewTaskTitle('');
-                      setNewTaskDescription('');
-                      setNewTaskPriority('medium');
-                      setShowNewTaskModal(false);
-                    }
-                  }}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
-                >
-                  创建任务
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   );
 };
